@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+pytest-of-root/
+.ruff_cache/
+.venv/
+venv/
+.deps/
+.DS_Store
+.idea/
+.vscode/
+
+# Data and generated artifacts
+data/raw/*
+data/interim/*
+artifacts/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!artifacts/.gitkeep
+*.parquet
+*.joblib
+
+# Secrets
+.env
+.streamlit/secrets.toml
+kaggle.json
