@@ -17,6 +17,44 @@ LOG_COLUMNS = [
     if column not in {"cash_share", "cross_currency_share", "flow_ratio"}
 ]
 
+MONEY_FEATURES = {
+    "out_total",
+    "in_total",
+    "out_mean",
+    "in_mean",
+    "out_max",
+    "in_max",
+    "total_value",
+}
+COUNT_FEATURES = {
+    "out_tx_count",
+    "in_tx_count",
+    "unique_out_counterparties",
+    "unique_in_counterparties",
+    "unique_out_banks",
+    "unique_in_banks",
+    "active_out_hours",
+    "reciprocal_counterparties",
+    "total_tx_count",
+}
+EXPLANATION_GROUPS = {
+    "out_tx_count": "transaction_count",
+    "in_tx_count": "transaction_count",
+    "total_tx_count": "transaction_count",
+    "out_total": "transaction_value",
+    "in_total": "transaction_value",
+    "total_value": "transaction_value",
+    "out_mean": "typical_amount",
+    "in_mean": "typical_amount",
+    "out_max": "largest_amount",
+    "in_max": "largest_amount",
+    "unique_out_counterparties": "counterparties",
+    "unique_in_counterparties": "counterparties",
+    "reciprocal_counterparties": "counterparties",
+    "unique_out_banks": "banks",
+    "unique_in_banks": "banks",
+}
+
 
 class SignalGraphModel:
     """Segment behavior, then rank cluster-relative anomalies.
@@ -137,27 +175,65 @@ class SignalGraphModel:
         ).round(2)
         result["embedding_x"] = embedding[:, 0]
         result["embedding_y"] = embedding[:, 1]
-        result["alert_reason"] = [
-            self.explain_row(row, int(cluster))
+        explanations = [
+            self.explain_factors(row, int(cluster), top_n=3)
             for (_, row), cluster in zip(result.iterrows(), clusters, strict=True)
         ]
+        result["alert_reason"] = [factors[0] for factors in explanations]
+        result["alert_factors"] = [" • ".join(factors) for factors in explanations]
         return result
 
     def explain_row(self, row: pd.Series, cluster: int) -> str:
         """Describe the feature furthest from its cluster's ordinary behavior."""
 
+        return self.explain_factors(row, cluster, top_n=1)[0]
+
+    def explain_factors(self, row: pd.Series, cluster: int, top_n: int = 3) -> list[str]:
+        """Describe the largest robust behavioral deviations from a segment.
+
+        These are interpretable supporting factors, not exact Isolation Forest feature
+        contributions.
+        """
+
         median = self.cluster_medians[cluster]
         scale = self.cluster_scales[cluster]
-        deviation = ((row[self.feature_columns] - median) / scale).abs()
-        feature = str(deviation.idxmax())
+        values = row[self.feature_columns].astype(float)
+        deviation = ((values - median) / scale).abs().astype(float)
+        if int(row["out_tx_count"]) == 0:
+            deviation.loc[["cross_currency_share", "cash_share"]] = -np.inf
+
+        features: list[str] = []
+        used_groups: set[str] = set()
+        for feature in deviation.sort_values(ascending=False).index:
+            feature = str(feature)
+            group = EXPLANATION_GROUPS.get(feature, feature)
+            if group in used_groups:
+                continue
+            features.append(feature)
+            used_groups.add(group)
+            if len(features) == top_n:
+                break
+        return [self._format_factor(feature, row, median) for feature in features]
+
+    def _format_factor(self, feature: str, row: pd.Series, median: pd.Series) -> str:
         value = float(row[feature])
         baseline = float(median[feature])
         label = FEATURE_LABELS[feature]
-        if value >= 0 and baseline >= 0:
-            comparison = f"{value:,.1f} vs segment median {baseline:,.1f}"
-        else:
-            comparison = f"deviation {float(deviation[feature]):.1f} IQRs from segment median"
-        return f"Unusual {label}: {comparison}"
+
+        if feature in {"cross_currency_share", "cash_share"}:
+            denominator = int(row["out_tx_count"])
+            numerator = int(round(value * denominator))
+            noun = "transaction" if denominator == 1 else "transactions"
+            limited_sample = "; limited sample" if denominator < 3 else ""
+            return (
+                f"Unusual {label}: {numerator} of {denominator} outgoing {noun} "
+                f"({value:.0%}) vs segment median {baseline:.0%}{limited_sample}"
+            )
+        if feature in MONEY_FEATURES:
+            return f"Unusual {label}: ${value:,.2f} vs segment median ${baseline:,.2f}"
+        if feature in COUNT_FEATURES:
+            return f"Unusual {label}: {value:,.0f} vs segment median {baseline:,.0f}"
+        return f"Unusual {label}: {value:,.2f} vs segment median {baseline:,.2f}"
 
     def _prepare(self, features: pd.DataFrame) -> pd.DataFrame:
         prepared = features[self.feature_columns].astype(float).copy()

@@ -26,6 +26,7 @@ dev = [
 
 [project.scripts]
 signalgraph-aml = "signalgraph_aml.pipeline:main"
+signalgraph-benchmark = "signalgraph_aml.benchmark:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

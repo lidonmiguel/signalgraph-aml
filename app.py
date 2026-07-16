@@ -10,9 +10,10 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from signalgraph_aml.data import generate_demo_transactions
-from signalgraph_aml.evaluation import evaluate_alerts, rank_alerts
+from signalgraph_aml.evaluation import capacity_curve, evaluate_alerts, rank_alerts
 from signalgraph_aml.features import build_account_day_features, temporal_train_mask
 from signalgraph_aml.modeling import SignalGraphModel
+from signalgraph_aml.profiling import build_cluster_profiles, cluster_name_map
 
 st.set_page_config(
     page_title="SignalGraph AML",
@@ -43,13 +44,17 @@ st.markdown(
 
 
 @st.cache_data(show_spinner="Learning normal account behavior…")
-def build_demo_state() -> tuple[pd.DataFrame, pd.DataFrame]:
+def build_demo_state() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     transactions = generate_demo_transactions()
     features = build_account_day_features(transactions)
     training = temporal_train_mask(features)
     model = SignalGraphModel(n_clusters=5).fit(features.loc[training])
     scored = model.score(features)
-    return transactions, scored.loc[~training].copy()
+    profiles = build_cluster_profiles(scored)
+    names = cluster_name_map(profiles)
+    evaluation_cases = scored.loc[~training].copy()
+    evaluation_cases["cluster_name"] = evaluation_cases["cluster"].map(names)
+    return transactions, evaluation_cases, profiles
 
 
 def money(value: float) -> str:
@@ -132,16 +137,21 @@ def network_figure(
     return figure
 
 
-transactions, evaluation_cases = build_demo_state()
+transactions, evaluation_cases, cluster_profiles = build_demo_state()
 
 st.sidebar.markdown("### Monitoring controls")
 max_budget = min(250, len(evaluation_cases))
 alert_budget = st.sidebar.slider(
     "Daily investigation capacity", 10, max_budget, min(100, max_budget), 10
 )
-available_clusters = sorted(evaluation_cases["cluster"].unique().tolist())
-selected_clusters = st.sidebar.multiselect(
-    "Behavioral segments", available_clusters, default=available_clusters
+segment_options = {
+    f"{int(row.cluster)} · {row.cluster_name}": int(row.cluster)
+    for row in cluster_profiles.itertuples(index=False)
+}
+selected_segment_labels = st.sidebar.multiselect(
+    "Behavioral segments",
+    list(segment_options),
+    default=list(segment_options),
 )
 reveal_labels = st.sidebar.toggle("Reveal ground truth", value=False)
 st.sidebar.caption(
@@ -149,6 +159,7 @@ st.sidebar.caption(
     "Reveal it only to evaluate the demo."
 )
 
+selected_clusters = [segment_options[label] for label in selected_segment_labels]
 filtered = evaluation_cases.loc[evaluation_cases["cluster"].isin(selected_clusters)].copy()
 if filtered.empty:
     st.warning("Select at least one behavioral segment.")
@@ -178,8 +189,14 @@ metric_columns[2].metric("Precision @ K", f"{metrics['precision_at_k']:.1%}")
 metric_columns[3].metric("Recall @ K", f"{metrics['recall_at_k']:.1%}")
 metric_columns[4].metric("Lift over random", f"{metrics['lift_at_k']:.1f}×")
 
-overview_tab, queue_tab, network_tab, method_tab = st.tabs(
-    ["Behavior map", "Investigation queue", "Network explorer", "Methodology"]
+overview_tab, capacity_tab, queue_tab, network_tab, method_tab = st.tabs(
+    [
+        "Behavior map",
+        "Capacity planning",
+        "Investigation queue",
+        "Network explorer",
+        "Methodology",
+    ]
 )
 
 with overview_tab:
@@ -199,6 +216,7 @@ with overview_tab:
             "hover_name": "case_id",
             "hover_data": {
                 "cluster": True,
+                "cluster_name": True,
                 "risk_score": True,
                 "alert_reason": True,
                 "embedding_x": False,
@@ -239,6 +257,94 @@ with overview_tab:
             "and the dashed threshold reflects the current investigation capacity."
         )
 
+    st.markdown("#### Behavioral segment profiles")
+    st.caption(
+        "Names describe median transaction behavior; they are not groups of suspects. "
+        "The names are derived without laundering labels."
+    )
+    profile_table = cluster_profiles.copy()
+    profile_table["median_value"] = profile_table["median_value"].map(money)
+    profile_table["median_cross_currency_share"] = profile_table[
+        "median_cross_currency_share"
+    ].map(lambda value: f"{value:.0%}")
+    profile_table["median_cash_share"] = profile_table["median_cash_share"].map(
+        lambda value: f"{value:.0%}"
+    )
+    st.dataframe(
+        profile_table,
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "cluster": "Segment",
+            "cluster_name": "Behavioral name",
+            "cases": "Cases",
+            "median_transactions": "Median transactions",
+            "median_value": "Median value",
+            "median_counterparties": "Median counterparties",
+            "median_cross_currency_share": "Cross-currency share",
+            "median_cash_share": "Cash share",
+            "median_flow_ratio": "Flow balance",
+        },
+    )
+
+with capacity_tab:
+    st.subheader("Investigation capacity trade-off")
+    st.caption(
+        "Moving the capacity threshold does not retrain the model. It changes how many of the "
+        "highest-ranked cases analysts review."
+    )
+    maximum_curve_capacity = min(250, len(filtered))
+    capacities = sorted(
+        set(range(10, maximum_curve_capacity + 1, 10)) | {min(budget, maximum_curve_capacity)}
+    )
+    curve = capacity_curve(filtered, capacities)
+    tradeoff = go.Figure()
+    tradeoff.add_trace(
+        go.Scatter(
+            x=curve["capacity"],
+            y=curve["precision"],
+            name="Precision",
+            mode="lines+markers",
+            line={"color": "#ffcf66", "width": 3},
+        )
+    )
+    tradeoff.add_trace(
+        go.Scatter(
+            x=curve["capacity"],
+            y=curve["recall"],
+            name="Recall",
+            mode="lines+markers",
+            line={"color": "#39e6b0", "width": 3},
+        )
+    )
+    tradeoff.add_vline(
+        x=budget,
+        line_dash="dash",
+        line_color="#f4f7fb",
+        annotation_text=f"Current capacity: {budget}",
+    )
+    tradeoff.update_layout(
+        height=470,
+        xaxis_title="Cases investigated (K)",
+        yaxis_title="Metric",
+        yaxis_tickformat=".0%",
+        yaxis_range=[0, 1.02],
+        hovermode="x unified",
+        legend={"orientation": "h", "y": 1.12},
+        margin={"l": 5, "r": 5, "t": 60, "b": 5},
+    )
+    st.plotly_chart(tradeoff, width="stretch")
+    selected_metrics = curve.loc[curve["capacity"].eq(min(budget, maximum_curve_capacity))].iloc[0]
+    capacity_columns = st.columns(4)
+    capacity_columns[0].metric("Cases reviewed", f"{int(selected_metrics.capacity):,}")
+    capacity_columns[1].metric("Positive cases found", f"{int(selected_metrics.hits):,}")
+    capacity_columns[2].metric("Precision", f"{selected_metrics.precision:.1%}")
+    capacity_columns[3].metric("Recall", f"{selected_metrics.recall:.1%}")
+    st.info(
+        "A useful operating point balances missed suspicious cases against analyst workload. "
+        "Higher capacity usually increases recall while reducing precision."
+    )
+
 with queue_tab:
     st.subheader("Ranked cases for analyst review")
     queue = alerts[
@@ -246,6 +352,7 @@ with queue_tab:
             "case_id",
             "risk_score",
             "cluster",
+            "cluster_name",
             "total_tx_count",
             "total_value",
             "unique_out_counterparties",
@@ -264,6 +371,7 @@ with queue_tab:
                 "Risk", min_value=0, max_value=100, format="%.1f"
             ),
             "cluster": "Segment",
+            "cluster_name": "Behavioral profile",
             "total_tx_count": "Transactions",
             "total_value": "Value moved",
             "unique_out_counterparties": "Payees",
@@ -279,7 +387,7 @@ with network_tab:
     case = alerts.loc[alerts["case_id"].eq(selected_case)].iloc[0]
     st.markdown(
         f'<span class="case-chip">Risk {case.risk_score:.1f}</span>'
-        f'<span class="case-chip">Segment {int(case.cluster)}</span>'
+        f'<span class="case-chip">Segment {int(case.cluster)} · {case.cluster_name}</span>'
         f'<span class="case-chip">{money(case.total_value)} moved</span>',
         unsafe_allow_html=True,
     )
@@ -290,11 +398,20 @@ with network_tab:
             width="stretch",
         )
     with detail_column:
-        st.markdown("#### Why this case surfaced")
-        st.info(case.alert_reason)
+        st.markdown("#### Largest behavioral deviations")
+        st.caption(
+            "These factors explain how the case differs from its segment; they are not exact "
+            "feature contributions or proof of laundering."
+        )
+        for factor in str(case.alert_factors).split(" • "):
+            st.info(factor)
         st.metric("Transactions", f"{int(case.total_tx_count):,}")
         st.metric("Unique outgoing counterparties", f"{int(case.unique_out_counterparties):,}")
-        st.metric("Cross-currency share", f"{case.cross_currency_share:.0%}")
+        cross_currency_count = int(round(case.cross_currency_share * case.out_tx_count))
+        st.metric(
+            "Cross-currency outgoing activity",
+            f"{cross_currency_count} of {int(case.out_tx_count)} ({case.cross_currency_share:.0%})",
+        )
         st.caption(
             "Nodes are accounts; lines aggregate transfers for the selected day. The selected "
             "account is green. If labels are revealed, known laundering edges are pink."
@@ -306,12 +423,14 @@ with method_tab:
         """
         1. **Account-day aggregation** turns transaction logs into behavioral velocity, value,
            counterparty, bank-diversity, currency, and reciprocity features.
-        2. **MiniBatch K-Means** discovers behavioral segments from the earliest 70% of dates.
+        2. **MiniBatch K-Means** discovers and names behavioral segments from the earliest 70%
+           of dates without using laundering outcomes.
         3. **Cluster-relative Isolation Forests** identify unusual behavior inside each segment.
         4. **Operational ranking** combines anomaly percentile (82%) and distance from the
            segment center (18%).
-        5. **Ground truth is revealed last** to calculate precision, recall, PR-AUC, and lift
-           under a fixed alert budget.
+        5. **Capacity analysis** shows the precision/recall trade-off at different analyst
+           workloads.
+        6. **Ground truth is revealed last** to calculate precision, recall, PR-AUC, and lift.
         """
     )
     st.warning(

@@ -36,6 +36,10 @@ The raw transaction schema is normalized, validated, and aggregated into account
 Both sender and receiver activity contribute to each case. The binary laundering field is retained
 only as an evaluation outcome and is excluded from all model features.
 
+The benchmark runner records the input SHA-256, file size, transaction count, date range, runtime,
+and library versions. It refuses to publish a full IBM HI-Small report for inputs with fewer than
+five million transactions unless the explicit development-only override is supplied.
+
 ## Limitations
 
 - Synthetic behavior cannot capture every operational, geographic, or regulatory nuance.

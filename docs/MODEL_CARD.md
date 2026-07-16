@@ -37,8 +37,14 @@ Accuracy is intentionally omitted because laundering cases are extremely rare.
 ## Explainability
 
 Each alert reports the feature with the largest robust deviation from its behavioral segment, along
-with the case value and segment median. The dashboard also exposes the account's one-hop transfer
-network for the selected day.
+with the case value and segment median. The dashboard now shows three non-redundant behavioral
+deviations and exposes numerators and denominators for share features. For example, it displays
+“1 of 1 outgoing transactions” rather than presenting 100% without context. These deviations are
+supporting explanations, not exact Isolation Forest feature attributions. The dashboard also
+exposes the account's one-hop transfer network for the selected day.
+
+Cluster names are generated from median behavior without using laundering outcomes. They are
+descriptive summaries, not customer identities or risk categories.
 
 ## Known limitations
 
@@ -47,6 +53,7 @@ network for the selected day.
 - The current one-hop visualization is investigative context, not a graph model.
 - Model selection on a single synthetic generator may overfit its assumptions.
 - Operational labels can be delayed, incomplete, and affected by prior monitoring systems.
+- Cluster names are relative to the current population and may change after refitting.
 
 ## Required controls for real deployment
 
