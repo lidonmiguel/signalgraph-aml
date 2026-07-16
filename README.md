@@ -19,6 +19,8 @@ scoring to measure performance under a fixed investigation budget.
 > **Decision problem:** if an AML team can investigate only 100 alerts today, which accounts
 > should it review first—and why?
 
+<img width="1690" height="795" alt="image" src="https://github.com/user-attachments/assets/f7ef0a0f-0da9-4a06-b1f3-af43dbe81a20" />
+
 ## What is already working
 
 - A deterministic synthetic demo, so the complete project runs without restricted bank data.
