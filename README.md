@@ -95,10 +95,11 @@ writes only the small, commit-ready report tables to `docs/benchmarks/ibm-hi-sma
 
 The committed [IBM HI-Small benchmark report](docs/benchmarks/ibm-hi-small/BENCHMARK_REPORT.md)
 uses 5,078,345 transactions and a strict out-of-time evaluation containing 720,800 account-days.
-At a daily capacity of 100 cases, the model finds 20 positive account-days: **20.0% precision**,
-**0.61% recall**, and **43.94× lift** over random selection. PR-AUC is 0.0118 against a 0.00455
-positive prevalence. The high lift and low recall show the intended operational trade-off: a small
-analyst queue is strongly enriched but cannot cover every generated laundering case.
+At a review budget of 100 cases across the held-out queue, the model finds 20 positive account-days:
+**20.0% precision**, **0.61% recall**, and **43.94× lift** over random selection. PR-AUC is 0.0118
+against a 0.00455 positive prevalence. The high lift and low recall show the intended operational
+trade-off: a small analyst queue is strongly enriched but cannot cover every generated laundering
+case.
 
 The small benchmark contains roughly five million transactions. Use a machine with at least
 8 GB of available memory for the current pandas pipeline. For quick plumbing checks, create a
