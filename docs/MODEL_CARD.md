@@ -15,9 +15,11 @@ It is not intended to make autonomous enforcement decisions or identify criminal
 
 ## Training design
 
-MiniBatch K-Means and RobustScaler are fitted on the earliest 70% of complete dates. One Isolation
-Forest is trained per sufficiently large behavioral segment; small segments fall back to a global
-detector. The later 30% of dates are scored out of time.
+MiniBatch K-Means and RobustScaler are fitted on the earliest complete dates closest to 70% of
+account-day volume. Using case volume prevents sparse tail dates from consuming most of the split
+while preserving a strict chronological boundary. One Isolation Forest is trained per sufficiently
+large behavioral segment; small segments fall back to a global detector. Later dates are scored
+out of time.
 
 `is_laundering` is not included in the model feature list or used for preprocessing, cluster choice,
 model fitting, score construction, or alert explanations.

@@ -26,7 +26,7 @@ scoring to measure performance under a fixed investigation budget.
 
 - A deterministic synthetic demo, so the complete project runs without restricted bank data.
 - IBM AML schema validation and account-day feature engineering.
-- Temporal training on the earliest 70% of dates.
+- Temporal training on complete early dates closest to 70% of account-day volume.
 - Behavioral segmentation with MiniBatch K-Means.
 - Cluster-relative anomaly scoring with Isolation Forest.
 - Human-readable alert reasons and a two-dimensional behavior map.
@@ -90,6 +90,15 @@ PowerShell users can place the command on one line or replace each `\` with a ba
 
 The command keeps large models and scored case files under the ignored `artifacts/` directory and
 writes only the small, commit-ready report tables to `docs/benchmarks/ibm-hi-small/`.
+
+### Published HI-Small result
+
+The committed [IBM HI-Small benchmark report](docs/benchmarks/ibm-hi-small/BENCHMARK_REPORT.md)
+uses 5,078,345 transactions and a strict out-of-time evaluation containing 720,800 account-days.
+At a daily capacity of 100 cases, the model finds 20 positive account-days: **20.0% precision**,
+**0.61% recall**, and **43.94× lift** over random selection. PR-AUC is 0.0118 against a 0.00455
+positive prevalence. The high lift and low recall show the intended operational trade-off: a small
+analyst queue is strongly enriched but cannot cover every generated laundering case.
 
 The small benchmark contains roughly five million transactions. Use a machine with at least
 8 GB of available memory for the current pandas pipeline. For quick plumbing checks, create a
@@ -161,7 +170,7 @@ metric calculations.
 ## Roadmap
 
 - [x] Add a reproducible IBM HI-Small benchmark and report workflow.
-- [ ] Run it on `HI-Small_Trans.csv` and commit the generated report.
+- [x] Run it on `HI-Small_Trans.csv` and commit the generated report.
 - [ ] Add graph-motif features for fan-in, fan-out, rapid cycles, and scatter-gather behavior.
 - [ ] Compare K-Means with HDBSCAN on a representative account sample.
 - [ ] Add experiment tracking and feature-drift monitoring.

@@ -138,8 +138,13 @@ class SignalGraphModel:
         self.is_fitted = True
         return self
 
-    def score(self, features: pd.DataFrame) -> pd.DataFrame:
-        """Attach behavioral segment, risk score, embedding, and alert reason."""
+    def score(
+        self,
+        features: pd.DataFrame,
+        *,
+        include_explanations: bool = True,
+    ) -> pd.DataFrame:
+        """Attach behavioral segment, risk score, embedding, and optional alert reasons."""
 
         if not self.is_fitted:
             raise RuntimeError("The model must be fitted before scoring")
@@ -175,12 +180,18 @@ class SignalGraphModel:
         ).round(2)
         result["embedding_x"] = embedding[:, 0]
         result["embedding_y"] = embedding[:, 1]
-        explanations = [
-            self.explain_factors(row, int(cluster), top_n=3)
-            for (_, row), cluster in zip(result.iterrows(), clusters, strict=True)
-        ]
-        result["alert_reason"] = [factors[0] for factors in explanations]
-        result["alert_factors"] = [" • ".join(factors) for factors in explanations]
+        if include_explanations:
+            explanations = [
+                self.explain_factors(row, int(cluster), top_n=3)
+                for (_, row), cluster in zip(result.iterrows(), clusters, strict=True)
+            ]
+            result["alert_reason"] = [factors[0] for factors in explanations]
+            result["alert_factors"] = [" • ".join(factors) for factors in explanations]
+        else:
+            # Full-data benchmark reports use only scores and aggregate profiles. Avoid
+            # spending most of the run constructing unused prose for millions of cases.
+            result["alert_reason"] = ""
+            result["alert_factors"] = ""
         return result
 
     def explain_row(self, row: pd.Series, cluster: int) -> str:

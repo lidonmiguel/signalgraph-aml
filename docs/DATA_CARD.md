@@ -17,9 +17,10 @@ and laundering indicators. It is generated rather than anonymized from individua
 
 ## Dataset selection
 
-Start with `HI-Small_Trans.csv`: approximately five million transactions across ten days. It is
-large enough to demonstrate practical processing while remaining feasible on a personal computer.
-The repository never commits or redistributes this file.
+Start with `HI-Small_Trans.csv`: approximately five million transactions with dense activity across
+September 1–10 and a small transaction tail through September 18. It is large enough to demonstrate
+practical processing while remaining feasible on a personal computer. The repository never commits
+or redistributes this file.
 
 ## Demo data
 

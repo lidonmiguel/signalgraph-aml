@@ -21,3 +21,9 @@ The generated directory contains:
 - `cluster_profiles.csv` — behavioral segment names and medians
 
 Raw IBM data remains under `data/raw/` and is excluded from Git.
+
+The benchmark skips per-case prose generation because the committed report uses only model
+scores and aggregate profiles. The normal CLI and dashboard continue to generate alert reasons.
+
+The published full-data result is available in
+[`ibm-hi-small/BENCHMARK_REPORT.md`](ibm-hi-small/BENCHMARK_REPORT.md).
