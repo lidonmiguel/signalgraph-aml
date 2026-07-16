@@ -47,12 +47,14 @@ def run_benchmark(
             "Refusing to publish a partial-data benchmark; use --allow-small-input only "
             "for development smoke tests."
         )
-    _, evaluation_cases, _, _ = run_pipeline(
+    scored_cases, evaluation_cases, metrics, _ = run_pipeline(
         transactions,
         output_dir=output,
         alert_budget=100,
         n_clusters=n_clusters,
+        include_explanations=False,
     )
+    training_cases = scored_cases.loc[~scored_cases.index.isin(evaluation_cases.index)]
     curve = capacity_curve(evaluation_cases, requested_capacities)
     profiles = build_cluster_profiles(evaluation_cases)
     elapsed_seconds = perf_counter() - started
@@ -65,10 +67,18 @@ def run_benchmark(
         "input_sha256": _sha256(source),
         "input_size_bytes": source.stat().st_size,
         "transactions": len(transactions),
+        "training_cases": len(training_cases),
         "evaluation_cases": len(evaluation_cases),
         "evaluation_positives": int(evaluation_cases["is_laundering"].sum()),
+        "evaluation_negatives": int((evaluation_cases["is_laundering"] == 0).sum()),
+        "evaluation_prevalence": float(evaluation_cases["is_laundering"].mean()),
+        "pr_auc": float(metrics["pr_auc"]),
         "date_min": transactions["timestamp"].min().isoformat(),
         "date_max": transactions["timestamp"].max().isoformat(),
+        "training_date_min": training_cases["date"].min().isoformat(),
+        "training_date_max": training_cases["date"].max().isoformat(),
+        "evaluation_date_min": evaluation_cases["date"].min().isoformat(),
+        "evaluation_date_max": evaluation_cases["date"].max().isoformat(),
         "clusters": n_clusters,
         "elapsed_seconds": round(elapsed_seconds, 2),
         "environment": {
@@ -140,8 +150,15 @@ def _render_report(
             f"- Input: `{summary['input_file']}`",
             f"- SHA-256: `{summary['input_sha256']}`",
             f"- Transactions: {int(summary['transactions']):,}",
+            f"- Training account-days: {int(summary['training_cases']):,}",
             f"- Evaluation account-days: {int(summary['evaluation_cases']):,}",
             f"- Positive evaluation account-days: {int(summary['evaluation_positives']):,}",
+            f"- Negative evaluation account-days: {int(summary['evaluation_negatives']):,}",
+            f"- Evaluation prevalence: {float(summary['evaluation_prevalence']):.3%}",
+            f"- Training period: {summary['training_date_min']} to {summary['training_date_max']}",
+            "- Evaluation period: "
+            f"{summary['evaluation_date_min']} to {summary['evaluation_date_max']}",
+            f"- PR-AUC: {float(summary['pr_auc']):.4f}",
             f"- Runtime: {float(summary['elapsed_seconds']):,.2f} seconds",
             f"- Python: {environment['python']}",
             f"- scikit-learn: {environment['scikit_learn']}",

@@ -86,13 +86,15 @@ def build_account_day_features(transactions: pd.DataFrame) -> pd.DataFrame:
 
 
 def temporal_train_mask(features: pd.DataFrame, train_fraction: float = 0.7) -> pd.Series:
-    """Return a leakage-resistant mask containing the earliest complete dates."""
+    """Return the earliest complete dates closest to the requested case fraction."""
 
     if not 0.0 < train_fraction < 1.0:
         raise ValueError("train_fraction must be between 0 and 1")
-    dates = np.array(sorted(features["date"].unique()))
-    if len(dates) < 2:
+    date_counts = features.groupby("date", observed=True, sort=True).size()
+    if len(date_counts) < 2:
         raise ValueError("At least two dates are required for a temporal split")
-    cutoff_index = min(len(dates) - 1, max(1, int(np.ceil(len(dates) * train_fraction))))
-    training_dates = set(dates[:cutoff_index])
+    cumulative_cases = date_counts.cumsum().iloc[:-1]
+    target_cases = len(features) * train_fraction
+    cutoff_date = (cumulative_cases - target_cases).abs().idxmin()
+    training_dates = set(date_counts.loc[:cutoff_date].index)
     return features["date"].isin(training_dates)

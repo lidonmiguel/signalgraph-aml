@@ -1,0 +1,6 @@
+cluster,cluster_name,cases,median_transactions,median_value,median_counterparties,median_cross_currency_share,median_cash_share,median_flow_ratio
+0,High-frequency activity,97705,5.0,13339.14,2.0,0.0,0.0,0.0
+1,Net receivers,318256,2.0,2943.5249999999996,1.0,0.0,0.0,7.987650151299605
+2,Net senders,190200,1.0,778.45,1.0,0.0,0.0,-6.640672901704434
+3,Cash-oriented activity,47277,4.0,9964.11,2.0,0.0,0.5,-4.409398581469732
+4,High-value movers,67362,10.0,203152.46000000002,4.0,0.0,0.125,-1.8307070729261365

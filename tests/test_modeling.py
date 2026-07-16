@@ -1,3 +1,5 @@
+import pandas as pd
+
 from signalgraph_aml.data import generate_demo_transactions
 from signalgraph_aml.features import build_account_day_features, temporal_train_mask
 from signalgraph_aml.modeling import SignalGraphModel
@@ -38,3 +40,22 @@ def test_share_explanation_discloses_small_denominator():
     )
     assert "1 of 1 outgoing transaction (100%)" in explanation
     assert "limited sample" in explanation
+
+
+def test_model_can_skip_explanations_without_changing_scores():
+    transactions = generate_demo_transactions(100, 900, 6)
+    features = build_account_day_features(transactions)
+    train_mask = temporal_train_mask(features)
+    model = SignalGraphModel(n_clusters=3).fit(features.loc[train_mask])
+
+    with_explanations = model.score(features.loc[~train_mask])
+    without_explanations = model.score(
+        features.loc[~train_mask], include_explanations=False
+    )
+
+    pd.testing.assert_series_equal(
+        with_explanations["risk_score"],
+        without_explanations["risk_score"],
+    )
+    assert without_explanations["alert_reason"].eq("").all()
+    assert without_explanations["alert_factors"].eq("").all()

@@ -19,6 +19,7 @@ def run_pipeline(
     output_dir: str | Path = "artifacts",
     alert_budget: int = 100,
     n_clusters: int = 5,
+    include_explanations: bool = True,
 ):
     """Build cases, fit on early dates, score later dates, and persist artifacts."""
 
@@ -27,7 +28,7 @@ def run_pipeline(
     features = build_account_day_features(transactions)
     train_mask = temporal_train_mask(features)
     model = SignalGraphModel(n_clusters=n_clusters).fit(features.loc[train_mask])
-    scored = model.score(features)
+    scored = model.score(features, include_explanations=include_explanations)
     evaluation_cases = scored.loc[~train_mask].copy()
     metrics = evaluate_alerts(evaluation_cases, alert_budget=alert_budget)
 
