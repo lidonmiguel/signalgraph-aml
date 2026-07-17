@@ -5,9 +5,11 @@
 **Explainable unsupervised detection of suspicious banking activity**
 
 [![CI](https://github.com/lidonmiguel/signalgraph-aml/actions/workflows/ci.yml/badge.svg)](https://github.com/lidonmiguel/signalgraph-aml/actions/workflows/ci.yml)
+[![Live dashboard](https://img.shields.io/badge/Live-IBM_benchmark-36E1B4)](https://signalgraph-aml.lidonmiguel.chatgpt.site)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-investigation_console-FF4B4B?logo=streamlit&logoColor=white)
 ![Learning](https://img.shields.io/badge/ML-unsupervised-39E6B0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F4C95D.svg)](LICENSE)
 
 </div>
 
@@ -41,6 +43,10 @@ The repository includes a separate, auditable IBM benchmark command that records
 software environment, runtime, capacity curve, and segment profiles.
 
 ## Dashboard
+
+The portfolio includes a [hosted, read-only benchmark summary](https://signalgraph-aml.lidonmiguel.chatgpt.site)
+built entirely from committed, non-sensitive artifacts. The local Streamlit application provides
+the full interactive workflow.
 
 The application opens on a published, read-only IBM benchmark and includes six analyst views:
 
@@ -177,10 +183,16 @@ metric calculations.
 - [ ] Add graph-motif features for fan-in, fan-out, rapid cycles, and scatter-gather behavior.
 - [ ] Compare K-Means with HDBSCAN on a representative account sample.
 - [ ] Add experiment tracking and feature-drift monitoring.
-- [ ] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.
+- [x] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.
 
 ## Responsible use
 
 This project prioritizes investigation; it does not determine guilt, freeze accounts, or replace
 an AML analyst. An anomaly is unusual, not necessarily illicit. Any real deployment would require
 privacy controls, model validation, bias testing, audit trails, drift monitoring, and human review.
+
+## License
+
+The project code is released under the [MIT License](LICENSE). The IBM AML dataset is not included
+in this repository and remains governed by its own CDLA-Sharing-1.0 terms. See the
+[data card](docs/DATA_CARD.md) for provenance and usage constraints.
