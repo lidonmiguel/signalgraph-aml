@@ -5,7 +5,6 @@
 **Explainable unsupervised detection of suspicious banking activity**
 
 [![CI](https://github.com/lidonmiguel/signalgraph-aml/actions/workflows/ci.yml/badge.svg)](https://github.com/lidonmiguel/signalgraph-aml/actions/workflows/ci.yml)
-[![Live dashboard](https://img.shields.io/badge/Live-IBM_benchmark-36E1B4)](https://signalgraph-aml.lidonmiguel.chatgpt.site)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-investigation_console-FF4B4B?logo=streamlit&logoColor=white)
 ![Learning](https://img.shields.io/badge/ML-unsupervised-39E6B0)
@@ -44,9 +43,8 @@ software environment, runtime, capacity curve, and segment profiles.
 
 ## Dashboard
 
-The portfolio includes a [hosted, read-only benchmark summary](https://signalgraph-aml.lidonmiguel.chatgpt.site)
-built entirely from committed, non-sensitive artifacts. The local Streamlit application provides
-the full interactive workflow.
+The application includes a read-only benchmark summary built entirely from committed,
+non-sensitive artifacts. The local Streamlit application provides the full interactive workflow.
 
 The application opens on a published, read-only IBM benchmark and includes six analyst views:
 
@@ -183,7 +181,7 @@ metric calculations.
 - [ ] Add graph-motif features for fan-in, fan-out, rapid cycles, and scatter-gather behavior.
 - [ ] Compare K-Means with HDBSCAN on a representative account sample.
 - [ ] Add experiment tracking and feature-drift monitoring.
-- [x] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.
+- [ ] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.
 
 ## Responsible use
 
