@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -55,6 +58,17 @@ def build_demo_state() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     evaluation_cases = scored.loc[~training].copy()
     evaluation_cases["cluster_name"] = evaluation_cases["cluster"].map(names)
     return transactions, evaluation_cases, profiles
+
+
+@st.cache_data(show_spinner=False)
+def load_ibm_benchmark() -> tuple[dict[str, object], pd.DataFrame, pd.DataFrame]:
+    """Load the committed, non-sensitive benchmark summaries."""
+
+    benchmark_dir = Path(__file__).parent / "docs" / "benchmarks" / "ibm-hi-small"
+    summary = json.loads((benchmark_dir / "benchmark_summary.json").read_text(encoding="utf-8"))
+    curve = pd.read_csv(benchmark_dir / "capacity_curve.csv")
+    profiles = pd.read_csv(benchmark_dir / "cluster_profiles.csv")
+    return summary, curve, profiles
 
 
 def money(value: float) -> str:
@@ -138,8 +152,13 @@ def network_figure(
 
 
 transactions, evaluation_cases, cluster_profiles = build_demo_state()
+benchmark_summary, benchmark_curve, benchmark_profiles = load_ibm_benchmark()
 
-st.sidebar.markdown("### Monitoring controls")
+st.sidebar.markdown("### Demo controls")
+st.sidebar.caption(
+    "These controls affect the interactive demo tabs. The IBM benchmark tab is a fixed, "
+    "read-only experiment."
+)
 max_budget = min(250, len(evaluation_cases))
 alert_budget = st.sidebar.slider(
     "Daily investigation capacity", 10, max_budget, min(100, max_budget), 10
@@ -181,16 +200,16 @@ st.markdown(
     "review.</div>",
     unsafe_allow_html=True,
 )
+st.markdown(
+    '<span class="case-chip">v0.1</span>'
+    '<span class="case-chip">IBM HI-Small benchmark published</span>'
+    '<span class="case-chip">5.08M transactions</span>',
+    unsafe_allow_html=True,
+)
 
-metric_columns = st.columns(5)
-metric_columns[0].metric("Cases monitored", f"{metrics['cases']:,}")
-metric_columns[1].metric("Alert capacity", f"{metrics['alert_budget']:,}")
-metric_columns[2].metric("Precision @ K", f"{metrics['precision_at_k']:.1%}")
-metric_columns[3].metric("Recall @ K", f"{metrics['recall_at_k']:.1%}")
-metric_columns[4].metric("Lift over random", f"{metrics['lift_at_k']:.1f}×")
-
-overview_tab, capacity_tab, queue_tab, network_tab, method_tab = st.tabs(
+benchmark_tab, overview_tab, capacity_tab, queue_tab, network_tab, method_tab = st.tabs(
     [
+        "IBM benchmark",
         "Behavior map",
         "Capacity planning",
         "Investigation queue",
@@ -199,7 +218,149 @@ overview_tab, capacity_tab, queue_tab, network_tab, method_tab = st.tabs(
     ]
 )
 
+with benchmark_tab:
+    st.subheader("Published IBM HI-Small benchmark")
+    st.caption(
+        "A reproducible, out-of-time experiment on synthetic IBM AML data. This view reads "
+        "only committed aggregate artifacts—no raw transactions or customer data."
+    )
+
+    benchmark_metrics = st.columns(5)
+    benchmark_metrics[0].metric(
+        "Transactions benchmarked", f"{int(benchmark_summary['transactions']):,}"
+    )
+    benchmark_metrics[1].metric(
+        "Evaluation account-days", f"{int(benchmark_summary['evaluation_cases']):,}"
+    )
+    benchmark_metrics[2].metric(
+        "Positive prevalence", f"{float(benchmark_summary['evaluation_prevalence']):.3%}"
+    )
+    benchmark_metrics[3].metric("PR-AUC", f"{float(benchmark_summary['pr_auc']):.4f}")
+    benchmark_metrics[4].metric(
+        "Runtime", f"{float(benchmark_summary['elapsed_seconds']) / 60:.1f} min"
+    )
+
+    selected_benchmark = benchmark_curve.loc[benchmark_curve["capacity"].eq(100)].iloc[0]
+    st.markdown("#### Operating point: review the top 100 cases")
+    operating_columns = st.columns(4)
+    operating_columns[0].metric("Positive cases found", f"{int(selected_benchmark.hits):,}")
+    operating_columns[1].metric("Precision @ 100", f"{selected_benchmark.precision:.1%}")
+    operating_columns[2].metric("Recall @ 100", f"{selected_benchmark.recall:.2%}")
+    operating_columns[3].metric("Lift @ 100 over random", f"{selected_benchmark.lift:.2f}×")
+    st.success(
+        "The top 100 queue contains 20 positive account-days: 20.0% precision compared with "
+        "0.455% prevalence. High lift shows strong prioritization; low recall shows that a "
+        "small review budget cannot cover every generated laundering case."
+    )
+
+    curve_column, lift_column = st.columns([1.55, 1])
+    with curve_column:
+        st.markdown("#### Precision and recall by review budget")
+        curve_long = benchmark_curve.melt(
+            id_vars="capacity",
+            value_vars=["precision", "recall"],
+            var_name="metric",
+            value_name="value",
+        )
+        curve_long["metric"] = curve_long["metric"].str.title()
+        benchmark_tradeoff = px.line(
+            curve_long,
+            x="capacity",
+            y="value",
+            color="metric",
+            markers=True,
+            color_discrete_map={"Precision": "#ffcf66", "Recall": "#39e6b0"},
+            labels={"capacity": "Cases reviewed (K)", "value": "Metric", "metric": "Metric"},
+        )
+        benchmark_tradeoff.update_layout(
+            height=390,
+            yaxis_tickformat=".1%",
+            hovermode="x unified",
+            legend={"orientation": "h", "y": 1.12},
+            margin={"l": 5, "r": 5, "t": 55, "b": 5},
+        )
+        st.plotly_chart(benchmark_tradeoff, width="stretch")
+    with lift_column:
+        st.markdown("#### Enrichment over random selection")
+        lift_chart = px.bar(
+            benchmark_curve,
+            x="capacity",
+            y="lift",
+            color="lift",
+            color_continuous_scale=["#24445e", "#39e6b0"],
+            labels={"capacity": "Cases reviewed (K)", "lift": "Lift (×)"},
+        )
+        lift_chart.update_layout(
+            height=390,
+            coloraxis_showscale=False,
+            margin={"l": 5, "r": 5, "t": 55, "b": 5},
+        )
+        st.plotly_chart(lift_chart, width="stretch")
+
+    profile_column, audit_column = st.columns([1.45, 1])
+    with profile_column:
+        st.markdown("#### Out-of-time behavioral segments")
+        segment_chart = px.bar(
+            benchmark_profiles.sort_values("cases"),
+            x="cases",
+            y="cluster_name",
+            orientation="h",
+            color="median_value",
+            color_continuous_scale=["#24445e", "#39e6b0", "#ffcf66"],
+            labels={
+                "cases": "Evaluation account-days",
+                "cluster_name": "Behavioral segment",
+                "median_value": "Median value",
+            },
+        )
+        segment_chart.update_layout(
+            height=370,
+            coloraxis_colorbar={"title": "Median value"},
+            margin={"l": 5, "r": 5, "t": 20, "b": 5},
+        )
+        st.plotly_chart(segment_chart, width="stretch")
+    with audit_column:
+        st.markdown("#### Reproducibility record")
+        st.metric("Training account-days", f"{int(benchmark_summary['training_cases']):,}")
+        st.metric(
+            "Evaluation positives / negatives",
+            f"{int(benchmark_summary['evaluation_positives']):,} / "
+            f"{int(benchmark_summary['evaluation_negatives']):,}",
+        )
+        training_start = str(benchmark_summary["training_date_min"]).split("T")[0]
+        training_end = str(benchmark_summary["training_date_max"]).split("T")[0]
+        evaluation_start = str(benchmark_summary["evaluation_date_min"]).split("T")[0]
+        evaluation_end = str(benchmark_summary["evaluation_date_max"]).split("T")[0]
+        st.markdown(f"**Training period:** `{training_start}` → `{training_end}`")
+        st.markdown(f"**Evaluation period:** `{evaluation_start}` → `{evaluation_end}`")
+        st.markdown(f"**Input SHA-256:** `{str(benchmark_summary['input_sha256'])[:16]}…`")
+        st.markdown(
+            "[Open the generated benchmark report on GitHub](https://github.com/"
+            "lidonmiguel/signalgraph-aml/blob/main/docs/benchmarks/ibm-hi-small/"
+            "BENCHMARK_REPORT.md)"
+        )
+
+    with st.expander("Reproduce this benchmark"):
+        st.code(
+            "signalgraph-benchmark --input data/raw/HI-Small_Trans.csv "
+            "--output-dir artifacts/ibm-hi-small "
+            "--report-dir docs/benchmarks/ibm-hi-small "
+            "--capacities 50 100 250 500 1000",
+            language="bash",
+        )
+        st.caption(
+            "The CSV is synthetic IBM AML data and remains git-ignored. The dashboard displays "
+            "only the small, committed output tables."
+        )
+
 with overview_tab:
+    st.caption("Interactive deterministic demo · sidebar controls apply to this view")
+    metric_columns = st.columns(5)
+    metric_columns[0].metric("Cases monitored", f"{metrics['cases']:,}")
+    metric_columns[1].metric("Alert capacity", f"{metrics['alert_budget']:,}")
+    metric_columns[2].metric("Precision @ K", f"{metrics['precision_at_k']:.1%}")
+    metric_columns[3].metric("Recall @ K", f"{metrics['recall_at_k']:.1%}")
+    metric_columns[4].metric("Lift over random", f"{metrics['lift_at_k']:.1f}×")
     left, right = st.columns([1.65, 1])
     with left:
         st.subheader("Behavioral landscape")
@@ -423,8 +584,8 @@ with method_tab:
         """
         1. **Account-day aggregation** turns transaction logs into behavioral velocity, value,
            counterparty, bank-diversity, currency, and reciprocity features.
-        2. **MiniBatch K-Means** discovers and names behavioral segments from the earliest 70%
-           of dates without using laundering outcomes.
+        2. **MiniBatch K-Means** discovers and names behavioral segments from complete early
+           dates closest to 70% of account-day volume without using laundering outcomes.
         3. **Cluster-relative Isolation Forests** identify unusual behavior inside each segment.
         4. **Operational ranking** combines anomaly percentile (82%) and distance from the
            segment center (18%).
