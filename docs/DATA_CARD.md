@@ -10,7 +10,8 @@
 **Research description:** [Realistic Synthetic Financial Transactions for Anti-Money
 Laundering Models](https://proceedings.neurips.cc/paper_files/paper/2023/file/5f38404edff6f3f642d6fa5892479c42-Paper-Datasets_and_Benchmarks.pdf)
 
-**Data license:** CDLA-Sharing-1.0. Check the source terms before redistributing derived data.
+**Data license:** CDLA-Sharing-1.0. This is separate from the repository's MIT code license.
+Check the source terms before downloading or redistributing the dataset or derived data.
 
 The benchmark represents synthetic banks, accounts, payment types, currencies, timestamps, values,
 and laundering indicators. It is generated rather than anonymized from individual customers.
