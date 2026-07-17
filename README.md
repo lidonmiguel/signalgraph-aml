@@ -12,6 +12,10 @@
 
 </div>
 
+## Live portfolio
+
+**[Explore the published SignalGraph AML benchmark →](https://lidonmiguel.github.io/signalgraph-aml/)**
+
 SignalGraph AML is a portfolio-ready financial-crime analytics project. It learns ordinary
 account behavior, discovers customer segments, and ranks unusual account-days for human review.
 The model never sees laundering labels during training; ground truth is revealed only after
