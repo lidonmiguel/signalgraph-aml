@@ -42,13 +42,15 @@ software environment, runtime, capacity curve, and segment profiles.
 
 ## Dashboard
 
-The application contains five analyst views:
+The application opens on a published, read-only IBM benchmark and includes six analyst views:
 
-1. **Behavior map** — PCA projection colored by anomaly risk, with an alert-capacity threshold.
-2. **Capacity planning** — precision and recall across different analyst workloads.
-3. **Investigation queue** — cases ranked by risk with interpretable alert reasons.
-4. **Network explorer** — a one-hop view of counterparties and value moved on the alert date.
-5. **Methodology** — a concise record of the leakage-aware experimental design.
+1. **IBM benchmark** — precomputed full-data metrics, capacity curves, segment profiles, and an
+   auditable reproducibility record without shipping raw transactions.
+2. **Behavior map** — PCA projection colored by anomaly risk, with an alert-capacity threshold.
+3. **Capacity planning** — precision and recall across different analyst workloads.
+4. **Investigation queue** — cases ranked by risk with interpretable alert reasons.
+5. **Network explorer** — a one-hop view of counterparties and value moved on the alert date.
+6. **Methodology** — a concise record of the leakage-aware experimental design.
 
 Ground-truth outcomes are hidden by default and can be revealed for evaluation.
 
