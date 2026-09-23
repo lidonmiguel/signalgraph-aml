@@ -102,6 +102,36 @@ PowerShell users can place the command on one line or replace each `\` with a ba
 The command keeps large models and scored case files under the ignored `artifacts/` directory and
 writes only the small, commit-ready report tables to `docs/benchmarks/ibm-hi-small/`.
 
+### Compare clustering methods
+
+Install the optional comparison dependencies, then run both methods on the same training-account
+sample and later account-days:
+
+```bash
+python -m pip install -e ".[dev,comparison]"
+signalgraph-compare-clusters \
+  --input data/raw/HI-Small_Trans.csv \
+  --output-dir artifacts/cluster-comparison \
+  --report-dir docs/benchmarks/cluster-comparison \
+  --sample-cases 20000 \
+  --min-cluster-sizes 50 100 200 \
+  --min-samples 15 \
+  --capacities 50 100 250 500 1000
+```
+
+PowerShell users can run the command on one line. A quick dependency and scoring check uses
+`signalgraph-compare-clusters --demo --min-cluster-sizes 30 60` and writes only to `artifacts/`.
+The full input run repeats feature engineering; allow time and memory comparable to the existing
+benchmark plus HDBSCAN fits. The resulting `COMPARISON_REPORT.md` and `comparison_summary.json`
+contain aggregate results, no raw transaction or case tables. Commit the generated report only
+after running the full CSV. The roadmap comparison remains pending until that report is reviewed.
+
+The full-training K-Means model is an operational reference. A sampled K-Means model and all
+HDBSCAN settings share a training sample, scaler, and anomaly-only score. An HDBSCAN noise case
+uses a global anomaly reference; later dates are assigned to existing clusters without refitting.
+The experiment does not replace the dashboard model. See the
+[benchmark instructions](docs/benchmarks/README.md) for interpretation.
+
 ### Published HI-Small result
 
 The committed figures below are a historical baseline from commit
@@ -171,6 +201,7 @@ signalgraph-aml/
 │   ├── evaluation.py              # top-K operational metrics
 │   ├── profiling.py               # data-driven segment descriptions
 │   ├── benchmark.py               # IBM benchmark and report generator
+│   ├── cluster_comparison.py      # sampled K-Means and HDBSCAN experiment
 │   └── pipeline.py                # reproducible CLI
 ├── tests/                         # unit and leakage tests
 ├── docs/                          # data and model cards

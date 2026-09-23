@@ -17,6 +17,16 @@ LOG_COLUMNS = [
     if column not in {"cash_share", "cross_currency_share", "flow_ratio"}
 ]
 
+
+def prepare_model_features(features: pd.DataFrame) -> pd.DataFrame:
+    """Apply the production model's label-free numeric feature transform."""
+
+    prepared = features[FEATURE_COLUMNS].astype(float).copy()
+    for column in LOG_COLUMNS:
+        prepared[column] = np.log1p(prepared[column].clip(lower=0))
+    return prepared.replace([np.inf, -np.inf], 0).fillna(0)
+
+
 MONEY_FEATURES = {
     "out_total",
     "in_total",
@@ -253,10 +263,7 @@ class SignalGraphModel:
         return f"Unusual {label}: {value:,.2f} vs segment median {baseline:,.2f}"
 
     def _prepare(self, features: pd.DataFrame) -> pd.DataFrame:
-        prepared = features[self.feature_columns].astype(float).copy()
-        for column in LOG_COLUMNS:
-            prepared[column] = np.log1p(prepared[column].clip(lower=0))
-        return prepared.replace([np.inf, -np.inf], 0).fillna(0)
+        return prepare_model_features(features)
 
     def _validate(self, features: pd.DataFrame) -> None:
         missing = set(self.feature_columns).difference(features.columns)
