@@ -21,9 +21,14 @@ while preserving a strict chronological boundary. One Isolation Forest is traine
 large behavioral segment; small segments fall back to a global detector. Later dates are scored
 out of time.
 
-The fan-out feature counts distinct recipients in a trailing 60-minute window and records the
-daily maximum. A window may reach into the preceding day, but never beyond the case day's end.
-Self-transfers do not count as recipients. This feature is not a complete graph-motif detector.
+Fan-in and fan-out count distinct senders and recipients in trailing 60-minute windows and record
+the daily maximum. Rapid-cycle and scatter-gather flags identify ordered three- or four-edge
+cycles (A→B→C→A or A→B→C→D→A) and four-edge diamonds (A→B,C→D) completed within three hours.
+Motifs use distinct accounts. Cycle edges are strictly ordered, and both outgoing branches of a
+scatter-gather must precede both incoming branches at the collector. The two collector transfers
+must have different timestamps; the model does not infer order from simultaneous transfers.
+Windows may reach into the preceding day but never beyond the case day's end. Self-transfers do
+not count. Motif flags describe bounded transaction structures, not evidence of illicit conduct.
 
 `is_laundering` is not included in the model feature list or used for preprocessing, cluster choice,
 model fitting, score construction, or alert explanations.
@@ -56,7 +61,8 @@ descriptive summaries, not customer identities or risk categories.
 
 - Isolation Forest scores are relative, not calibrated probabilities of laundering.
 - Cluster assignments can change as behavior or preprocessing changes.
-- The current one-hop visualization is investigative context, not a graph model.
+- Graph motifs are local structural heuristics, not a full graph model. The one-hop visualization
+  is investigative context.
 - Model selection on a single synthetic generator may overfit its assumptions.
 - Operational labels can be delayed, incomplete, and affected by prior monitoring systems.
 - Cluster names are relative to the current population and may change after refitting.

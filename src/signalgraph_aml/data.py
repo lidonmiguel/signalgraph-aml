@@ -186,6 +186,31 @@ def generate_demo_transactions(
                 )
             )
 
+    # Scatter-gather diamonds: one source disperses through two accounts,
+    # which both pass funds to the same recipient shortly afterward.
+    for pattern in range(3):
+        source, first, second, sink = suspicious_accounts[pattern * 4 : pattern * 4 + 4]
+        day = n_days - 2 + pattern % 2
+        amount = float(rng.uniform(15_000, 40_000))
+        for minute, origin, target, value in (
+            (0, source, first, amount),
+            (4, source, second, amount),
+            (12, first, sink, amount * 0.99),
+            (16, second, sink, amount * 0.98),
+        ):
+            illicit_rows.append(
+                _transaction_record(
+                    base + pd.Timedelta(days=day, hours=6, minutes=minute),
+                    origin,
+                    target,
+                    account_bank,
+                    value,
+                    "Wire",
+                    "US Dollar",
+                    "US Dollar",
+                )
+            )
+
     records = pd.concat([records, pd.DataFrame(illicit_rows)], ignore_index=True)
     return normalize_transactions(records)
 

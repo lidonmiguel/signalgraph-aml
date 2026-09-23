@@ -26,7 +26,8 @@ or redistributes this file.
 ## Demo data
 
 `generate_demo_transactions()` creates a small, deterministic dataset containing ordinary retail,
-business, and remittance-like behavior plus injected cycles and fan-out patterns. Its purpose is to
+business, and remittance-like behavior plus injected cycles, fan-out, and scatter-gather patterns.
+Its purpose is to
 test the product workflow and make the dashboard immediately runnable.
 
 Demo results must not be presented as independent evidence of AML detection performance: the

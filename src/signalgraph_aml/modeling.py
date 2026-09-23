@@ -32,10 +32,13 @@ COUNT_FEATURES = {
     "unique_out_counterparties",
     "max_out_recipients_60m",
     "unique_in_counterparties",
+    "max_in_senders_60m",
     "unique_out_banks",
     "unique_in_banks",
     "active_out_hours",
     "reciprocal_counterparties",
+    "rapid_cycle_3h",
+    "scatter_gather_3h",
     "total_tx_count",
 }
 EXPLANATION_GROUPS = {
@@ -52,6 +55,7 @@ EXPLANATION_GROUPS = {
     "unique_out_counterparties": "counterparties",
     "max_out_recipients_60m": "burst_counterparties",
     "unique_in_counterparties": "counterparties",
+    "max_in_senders_60m": "incoming_burst_counterparties",
     "reciprocal_counterparties": "counterparties",
     "unique_out_banks": "banks",
     "unique_in_banks": "banks",

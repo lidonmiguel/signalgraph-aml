@@ -75,3 +75,123 @@ def test_fan_out_uses_distinct_recipients_in_a_trailing_hour():
     assert fan_out.loc[(pd.Timestamp("2025-01-02"), "Y")] == 1
     assert fan_out.loc[(pd.Timestamp("2025-01-01"), "A")] == 0
     assert fan_out.loc[(pd.Timestamp("2025-01-02"), "C")] == 0
+
+
+def _cases_for_edges(edges):
+    transactions = normalize_transactions(
+        pd.DataFrame(
+            {
+                "timestamp": [timestamp for timestamp, _, _ in edges],
+                "from_bank": ["BANK-1"] * len(edges),
+                "from_account": [source for _, source, _ in edges],
+                "to_bank": ["BANK-2"] * len(edges),
+                "to_account": [target for _, _, target in edges],
+                "amount_received": [10.0] * len(edges),
+                "receiving_currency": ["Euro"] * len(edges),
+                "amount_paid": [10.0] * len(edges),
+                "payment_currency": ["Euro"] * len(edges),
+                "payment_format": ["Wire"] * len(edges),
+                "is_laundering": [0] * len(edges),
+            }
+        )
+    )
+    return build_account_day_features(transactions.iloc[::-1]).set_index(["date", "account_id"])
+
+
+def test_fan_in_counts_distinct_senders_across_midnight():
+    cases = _cases_for_edges(
+        [
+            ("2025-01-01 23:20", "A", "H"),
+            ("2025-01-01 23:50", "B", "H"),
+            ("2025-01-02 00:20", "C", "H"),
+            ("2025-01-02 00:21", "C", "H"),
+            ("2025-01-02 02:00", "H", "H"),
+        ]
+    )
+    assert cases.loc[(pd.Timestamp("2025-01-01"), "H"), "max_in_senders_60m"] == 2
+    assert cases.loc[(pd.Timestamp("2025-01-02"), "H"), "max_in_senders_60m"] == 3
+    assert cases.loc[(pd.Timestamp("2025-01-02"), "C"), "max_in_senders_60m"] == 0
+
+
+def test_rapid_cycle_requires_ordered_edges_within_three_hours():
+    cases = _cases_for_edges(
+        [
+            ("2025-01-01 23:30", "A", "B"),
+            ("2025-01-01 23:40", "B", "C"),
+            ("2025-01-02 00:00", "C", "A"),
+            ("2025-01-02 00:05", "B", "Q"),  # B has a case on the closing day
+            ("2025-01-02 01:00", "D", "E"),
+            ("2025-01-02 01:10", "E", "F"),
+            ("2025-01-02 04:01", "F", "D"),  # first edge expired
+            ("2025-01-02 05:00", "G", "H"),
+            ("2025-01-02 05:00", "H", "I"),
+            ("2025-01-02 05:00", "I", "G"),  # same-time order is unknown
+            ("2025-01-02 06:00", "J", "K"),
+            ("2025-01-02 06:10", "K", "L"),
+            ("2025-01-02 09:00", "L", "J"),  # exactly three hours: included
+        ]
+    )
+    day_one = pd.Timestamp("2025-01-01")
+    day_two = pd.Timestamp("2025-01-02")
+    assert cases.loc[(day_one, "A"), "rapid_cycle_3h"] == 0
+    assert all(cases.loc[(day_two, account), "rapid_cycle_3h"] == 1 for account in "ABC")
+    assert all(cases.loc[(day_two, account), "rapid_cycle_3h"] == 0 for account in "DEFGHI")
+    assert all(cases.loc[(day_two, account), "rapid_cycle_3h"] == 1 for account in "JKL")
+
+
+def test_four_account_cycle_matches_the_demo_pattern():
+    cases = _cases_for_edges(
+        [
+            ("2025-01-01 12:00", "A", "B"),
+            ("2025-01-01 12:10", "B", "C"),
+            ("2025-01-01 12:20", "C", "D"),
+            ("2025-01-01 12:30", "D", "A"),
+            ("2025-01-01 14:00", "E", "F"),
+            ("2025-01-01 14:10", "F", "G"),
+            ("2025-01-01 14:20", "G", "H"),
+            ("2025-01-01 17:01", "H", "E"),  # outside the three-hour window
+        ]
+    )
+    day = pd.Timestamp("2025-01-01")
+    assert all(cases.loc[(day, account), "rapid_cycle_3h"] == 1 for account in "ABCD")
+    assert all(cases.loc[(day, account), "rapid_cycle_3h"] == 0 for account in "EFGH")
+
+
+def test_scatter_gather_requires_two_ordered_paths_and_distinct_intermediaries():
+    cases = _cases_for_edges(
+        [
+            ("2025-01-01 23:40", "S", "X"),
+            ("2025-01-01 23:50", "S", "Y"),
+            ("2025-01-02 00:05", "X", "T"),
+            ("2025-01-02 00:10", "Y", "T"),
+            ("2025-01-02 00:12", "S", "Q"),
+            ("2025-01-02 09:00", "P", "M"),
+            ("2025-01-02 09:02", "N", "V"),
+            ("2025-01-02 09:10", "P", "N"),
+            ("2025-01-02 09:20", "M", "V"),  # N -> V preceded P -> N
+            ("2025-01-02 10:00", "J", "K"),
+            ("2025-01-02 10:02", "K", "L"),
+            ("2025-01-02 10:10", "J", "O"),
+            ("2025-01-02 10:20", "O", "L"),  # gather began before scatter finished
+            ("2025-01-02 11:00", "R", "U"),
+            ("2025-01-02 11:00", "U", "W"),
+            ("2025-01-02 11:10", "R", "Z"),
+            ("2025-01-02 11:20", "Z", "W"),  # first path was simultaneous
+        ]
+    )
+    day_one = pd.Timestamp("2025-01-01")
+    day_two = pd.Timestamp("2025-01-02")
+    assert cases.loc[(day_one, "S"), "scatter_gather_3h"] == 0
+    assert all(
+        cases.loc[(day_two, account), "scatter_gather_3h"] == 1 for account in "SXYT"
+    )
+    assert all(
+        cases.loc[(day_two, account), "scatter_gather_3h"] == 0
+        for account in "PMNVJKOLRUWZ"
+    )
+
+
+def test_demo_contains_completed_cycles_and_scatter_gather_paths():
+    cases = build_account_day_features(generate_demo_transactions(80, 600, 6))
+    assert cases["rapid_cycle_3h"].sum() > 0
+    assert cases["scatter_gather_3h"].sum() > 0

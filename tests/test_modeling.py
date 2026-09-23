@@ -14,6 +14,9 @@ def test_model_scores_without_label_leakage():
     scored = model.score(features.loc[~train_mask])
 
     assert "max_out_recipients_60m" in model.feature_columns
+    assert {"max_in_senders_60m", "rapid_cycle_3h", "scatter_gather_3h"}.issubset(
+        model.feature_columns
+    )
     assert "is_laundering" not in model.feature_columns
     assert scored["risk_score"].between(0, 100).all()
     assert scored["cluster"].between(0, 2).all()
