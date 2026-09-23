@@ -26,6 +26,10 @@ compare K-Means and HDBSCAN on identical later account-days. The experimental sa
 the same anomaly-only score, with HDBSCAN noise referred to a global training distribution.
 This experiment does not modify the deployed K-Means scoring pipeline. See
 [`benchmarks/README.md`](benchmarks/README.md) for its design and result limitations.
+The reviewed [HI-Small comparison](benchmarks/cluster-comparison/RESULTS.md) retained the
+full-training K-Means model: HDBSCAN improved some small-budget results against sampled
+K-Means, but scored worse on PR-AUC and larger budgets, ran longer, and saturated many
+cluster-relative percentiles.
 
 Fan-in and fan-out count distinct senders and recipients in trailing 60-minute windows and record
 the daily maximum. Rapid-cycle and scatter-gather flags identify ordered three- or four-edge

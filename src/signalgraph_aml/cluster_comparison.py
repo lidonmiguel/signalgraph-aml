@@ -71,6 +71,35 @@ def _detector(seed: int, estimators: int) -> IsolationForest:
     )
 
 
+def _resolve_percentile_ties(percentiles: np.ndarray, global_anomaly: np.ndarray) -> np.ndarray:
+    """Rank equal cluster percentiles by the common global detector.
+
+    Empirical percentiles saturate at one above each cluster's training maximum.
+    With a 20k-case sample and 720k evaluation cases, this can leave hundreds
+    tied at the top. The tiny secondary term cannot overtake a different
+    percentile in the sampled training reference.
+    """
+
+    weight = 1e-9
+    return 100 * ((1 - weight) * percentiles + weight * global_anomaly)
+
+
+def _global_evaluation_anomaly(
+    evaluation: pd.DataFrame,
+    scaler: RobustScaler,
+    global_detector: IsolationForest,
+    chunk_size: int,
+) -> np.ndarray:
+    """Compute the same label-free tie breaker once for all sampled arms."""
+
+    anomaly = np.empty(len(evaluation), dtype=float)
+    for start in range(0, len(evaluation), chunk_size):
+        end = min(start + chunk_size, len(evaluation))
+        scaled = scaler.transform(prepare_model_features(evaluation.iloc[start:end]))
+        anomaly[start:end] = -global_detector.score_samples(scaled)
+    return anomaly
+
+
 def _score_clustered(
     training_scaled: np.ndarray,
     training_labels: np.ndarray,
@@ -79,10 +108,11 @@ def _score_clustered(
     assign: Callable[[np.ndarray], np.ndarray],
     global_detector: IsolationForest,
     global_reference: np.ndarray,
+    global_evaluation_anomaly: np.ndarray,
     *,
     random_state: int,
     chunk_size: int,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Use identical cluster-relative anomaly scoring in both sampled arms.
 
     Noise (-1) uses the global detector calibrated against *all* sampled training
@@ -105,7 +135,7 @@ def _score_clustered(
         detectors[int(cluster)] = detector
         references[int(cluster)] = np.sort(-detector.score_samples(training_scaled[mask]))
 
-    scores = np.empty(len(evaluation), dtype=float)
+    primary_percentiles = np.empty(len(evaluation), dtype=float)
     labels = np.empty(len(evaluation), dtype=int)
     for start in range(0, len(evaluation), chunk_size):
         end = min(start + chunk_size, len(evaluation))
@@ -114,12 +144,18 @@ def _score_clustered(
         labels[start:end] = assigned
         if set(np.unique(assigned)) - set(detectors) - {-1}:
             raise ValueError("Prediction returned a cluster absent from training")
+        global_raw = global_evaluation_anomaly[start:end]
         for cluster in np.unique(assigned):
             mask = assigned == cluster
             detector = global_detector if cluster == -1 else detectors[int(cluster)]
-            raw = -detector.score_samples(scaled[mask])
-            scores[start:end][mask] = 100 * _percentile_rank(raw, references[int(cluster)])
-    return scores, labels
+            raw = (
+                global_raw[mask]
+                if detector is global_detector
+                else -detector.score_samples(scaled[mask])
+            )
+            primary_percentiles[start:end][mask] = _percentile_rank(raw, references[int(cluster)])
+    scores = _resolve_percentile_ties(primary_percentiles, global_evaluation_anomaly)
+    return scores, labels, primary_percentiles
 
 
 def _result(
@@ -133,12 +169,19 @@ def _result(
     elapsed_seconds: float,
     observed_rss_mib: float,
     risk_definition: str,
+    primary_percentiles: np.ndarray | None = None,
 ) -> dict[str, object]:
     scored = evaluation[["is_laundering", "total_value"]].copy()
     scored["risk_score"] = risk
     metrics = evaluate_alerts(scored, alert_budget=min(100, len(scored)))
     counts = pd.Series(training_labels).value_counts().sort_index()
     clustered = counts.loc[counts.index >= 0]
+    primary = risk if primary_percentiles is None else primary_percentiles
+    cutoff_ties: dict[str, int] = {}
+    for capacity in capacities:
+        budget = min(capacity, len(primary))
+        cutoff = np.partition(primary, len(primary) - budget)[len(primary) - budget]
+        cutoff_ties[str(budget)] = int(np.count_nonzero(primary == cutoff))
     profiles = training[
         ["total_tx_count", "total_value", "rapid_cycle_3h", "scatter_gather_3h"]
     ].copy()
@@ -161,6 +204,10 @@ def _result(
         ],
         "training_noise_fraction": float(np.mean(training_labels == -1)),
         "evaluation_noise_fraction": float(np.mean(evaluation_labels == -1)),
+        "primary_score_saturation_cases": int(np.count_nonzero(primary == 1))
+        if primary_percentiles is not None
+        else int(np.count_nonzero(primary == 100)),
+        "primary_score_ties_at_cutoff": cutoff_ties,
         "pr_auc": float(metrics["pr_auc"]),
         "capacity_results": capacity_curve(scored, capacities).to_dict(orient="records"),
         "elapsed_seconds": round(elapsed_seconds, 2),
@@ -228,6 +275,9 @@ def compare_account_days(
     training_scaled = scaler.fit_transform(prepare_model_features(sampled))
     global_detector = _detector(random_state, 250).fit(training_scaled)
     global_reference = np.sort(-global_detector.score_samples(training_scaled))
+    global_evaluation_anomaly = _global_evaluation_anomaly(
+        evaluation, scaler, global_detector, chunk_size
+    )
     shared_setup_seconds = round(perf_counter() - shared_started, 2)
 
     started = perf_counter()
@@ -235,7 +285,7 @@ def compare_account_days(
         n_clusters=n_clusters, batch_size=1_024, n_init=10, random_state=random_state
     )
     kmeans_labels = kmeans.fit_predict(training_scaled)
-    risk, labels = _score_clustered(
+    risk, labels, primary = _score_clustered(
         training_scaled,
         kmeans_labels,
         evaluation,
@@ -243,6 +293,7 @@ def compare_account_days(
         kmeans.predict,
         global_detector,
         global_reference,
+        global_evaluation_anomaly,
         random_state=random_state,
         chunk_size=chunk_size,
     )
@@ -257,10 +308,11 @@ def compare_account_days(
             requested_capacities,
             perf_counter() - started,
             process.memory_info().rss / mib,
-            "cluster-relative anomaly percentile; no center-distance term",
+            "cluster-relative anomaly percentile; equal percentiles use global anomaly",
+            primary,
         )
     )
-    del risk, labels, kmeans
+    del risk, labels, primary, kmeans
 
     for size in dict.fromkeys(min_cluster_sizes):
         started = perf_counter()
@@ -279,7 +331,7 @@ def compare_account_days(
             predicted, _strength = approximate_predict(clusterer, scaled)
             return predicted
 
-        risk, labels = _score_clustered(
+        risk, labels, primary = _score_clustered(
             training_scaled,
             labels_train,
             evaluation,
@@ -287,6 +339,7 @@ def compare_account_days(
             assign,
             global_detector,
             global_reference,
+            global_evaluation_anomaly,
             random_state=random_state,
             chunk_size=chunk_size,
         )
@@ -301,10 +354,11 @@ def compare_account_days(
                 requested_capacities,
                 perf_counter() - started,
                 process.memory_info().rss / mib,
-                "cluster-relative anomaly percentile; noise uses global reference",
+                "cluster anomaly percentile; ties use global anomaly; noise uses global reference",
+                primary,
             )
         )
-        del risk, labels
+        del risk, labels, primary
 
     case_ids = "\n".join(sampled["case_id"].sort_values()).encode("utf-8")
     return {
@@ -356,6 +410,16 @@ def _report(summary: dict[str, object]) -> str:
                 f"{result['pr_auc']:.5f} | {result['training_clusters']} | "
                 f"{result['evaluation_noise_fraction']:.1%} | {result['elapsed_seconds']:.1f} |"
             )
+    tie_rows = [
+        "| Method | Primary scores at maximum | Ties at K=50 | Ties at K=100 |",
+        "|---|---:|---:|---:|",
+    ]
+    for result in summary["results"]:
+        ties = result["primary_score_ties_at_cutoff"]
+        tie_rows.append(
+            f"| {result['method']} | {result['primary_score_saturation_cases']:,} | "
+            f"{ties.get('50', 'n/a')} | {ties.get('100', 'n/a')} |"
+        )
     profiles = [
         "| Method | Cluster | Cases | Median transactions | Median value | "
         "Cycle share | Diamond share |",
@@ -403,13 +467,19 @@ def _report(summary: dict[str, object]) -> str:
             "",
             *rows,
             "",
+            "## Percentile saturation (before the shared tie breaker)",
+            "",
+            *tie_rows,
+            "",
             "## Training segment profiles (largest eight per method, plus noise)",
             "",
             *profiles,
             "",
             "The full K-Means row uses all early account-days and the production 82/18 score.",
             "The sampled K-Means and HDBSCAN rows share the same training sample, scaler,",
-            "Isolation Forest configuration, and anomaly-only percentile score. Noise",
+            "Isolation Forest configuration, and anomaly-only percentile score. Equal",
+            "percentiles are ordered by the same global Isolation Forest raw anomaly",
+            "score, with a tiny weight that preserves different primary percentiles. Noise",
             "gets the global detector and its all-training reference. HDBSCAN assigns later",
             "cases approximately to *existing* clusters; it does not refit on future data.",
             "",

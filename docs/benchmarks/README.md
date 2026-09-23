@@ -54,9 +54,21 @@ are identical across all arms. HDBSCAN's `-1` noise uses the global detector and
 of all sampled training cases. If it finds zero clusters, its results represent global scoring
 only and should not be interpreted as a successful clustering method.
 
+Small HDBSCAN clusters create coarse empirical anomaly percentiles. Many later cases can
+exceed a cluster's training maximum and receive the same primary percentile. Both sampled
+methods therefore use the *same* global Isolation Forest anomaly score as a tiny secondary
+sort key. It resolves tied primary percentiles without changing the order of unequal ones.
+The report lists saturation and ties at the review cutoffs before the secondary score is applied.
+
 The settings are listed separately; no settings are selected using held-out labels. The run
 records input SHA-256, sample case-ID hash, split dates, environment, noise fractions, cluster
 sizes, PR-AUC, capacity metrics, runtime, and process-memory snapshots. Snapshots are not peak
 memory measurements. A report generated with `--demo` or `--allow-small-input` is a smoke test,
 not evidence for selecting a clustering method. Only the aggregated full-data output belongs in
 `docs/benchmarks/cluster-comparison/`.
+
+The reviewed full-data outcome and its limitations are recorded in
+[`cluster-comparison/RESULTS.md`](cluster-comparison/RESULTS.md). The original
+run's aggregate `COMPARISON_REPORT.md` and `comparison_summary.json` were
+generated on the machine holding the CSV; the committed summary contains
+the comparison metrics, input hash, sample hash, and split boundary.

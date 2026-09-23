@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recorded the full HI-Small K-Means/HDBSCAN comparison and retained the current K-Means model;
+  the corrected report shows percentile saturation and the shared tie breaker.
+- Resolved saturated percentile ties in the sampled clustering comparison with a shared
+  global-anomaly secondary score and added tie diagnostics to the report.
 - Added an isolated, reproducible account-sample experiment comparing MiniBatch K-Means and
   HDBSCAN on identical out-of-time cases, with explicit noise handling and aggregate reports.
 - Added 60-minute fan-in alongside fan-out, ordered three- and four-account cycles,
