@@ -21,6 +21,10 @@ while preserving a strict chronological boundary. One Isolation Forest is traine
 large behavioral segment; small segments fall back to a global detector. Later dates are scored
 out of time.
 
+The fan-out feature counts distinct recipients in a trailing 60-minute window and records the
+daily maximum. A window may reach into the preceding day, but never beyond the case day's end.
+Self-transfers do not count as recipients. This feature is not a complete graph-motif detector.
+
 `is_laundering` is not included in the model feature list or used for preprocessing, cluster choice,
 model fitting, score construction, or alert explanations.
 

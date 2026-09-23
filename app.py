@@ -221,8 +221,9 @@ benchmark_tab, overview_tab, capacity_tab, queue_tab, network_tab, method_tab = 
 with benchmark_tab:
     st.subheader("Published IBM HI-Small benchmark")
     st.caption(
-        "A reproducible, out-of-time experiment on synthetic IBM AML data. This view reads "
-        "only committed aggregate artifacts—no raw transactions or customer data."
+        "Historical out-of-time baseline on synthetic IBM AML data, before the 60-minute "
+        "fan-out feature was added. This view reads only committed aggregate artifacts; "
+        "the updated model has not yet been benchmarked on the full dataset."
     )
 
     benchmark_metrics = st.columns(5)
@@ -340,7 +341,7 @@ with benchmark_tab:
             "BENCHMARK_REPORT.md)"
         )
 
-    with st.expander("Reproduce this benchmark"):
+    with st.expander("Run the updated model on the same benchmark input"):
         st.code(
             "signalgraph-benchmark --input data/raw/HI-Small_Trans.csv "
             "--output-dir artifacts/ibm-hi-small "

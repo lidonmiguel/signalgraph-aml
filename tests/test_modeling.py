@@ -13,6 +13,7 @@ def test_model_scores_without_label_leakage():
     model = SignalGraphModel(n_clusters=3).fit(features.loc[train_mask])
     scored = model.score(features.loc[~train_mask])
 
+    assert "max_out_recipients_60m" in model.feature_columns
     assert "is_laundering" not in model.feature_columns
     assert scored["risk_score"].between(0, 100).all()
     assert scored["cluster"].between(0, 2).all()

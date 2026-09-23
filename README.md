@@ -103,6 +103,11 @@ writes only the small, commit-ready report tables to `docs/benchmarks/ibm-hi-sma
 
 ### Published HI-Small result
 
+The committed figures below are a historical baseline from commit
+[`f4ede61`](https://github.com/lidonmiguel/signalgraph-aml/commit/f4ede61f7105eb132a3acb64aa5dae13f77489c5),
+before the 60-minute fan-out feature was added to the model. They are not a measured result for
+the new feature. Rerun the benchmark on the same input CSV to compare the updated model.
+
 The committed [IBM HI-Small benchmark report](docs/benchmarks/ibm-hi-small/BENCHMARK_REPORT.md)
 uses 5,078,345 transactions and a strict out-of-time evaluation containing 720,800 account-days.
 At a review budget of 100 cases across the held-out queue, the model finds 20 positive account-days:
@@ -136,7 +141,9 @@ flowchart TD
 ```
 
 Features cover transaction velocity, incoming and outgoing value, counterparties, bank diversity,
-active hours, payment format, cross-currency behavior, flow imbalance, and reciprocal relationships.
+active hours, payment format, cross-currency behavior, flow imbalance, reciprocal relationships,
+and the maximum distinct outgoing recipients in any trailing 60-minute window ending that day.
+That window can include transactions from the preceding day; it never uses future transactions.
 Skewed features receive `log1p` transforms and robust scaling.
 
 Risk is a transparent operational score:
