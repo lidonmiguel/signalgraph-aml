@@ -123,8 +123,9 @@ PowerShell users can run the command on one line. A quick dependency and scoring
 `signalgraph-compare-clusters --demo --min-cluster-sizes 30 60` and writes only to `artifacts/`.
 The full input run repeats feature engineering; allow time and memory comparable to the existing
 benchmark plus HDBSCAN fits. The resulting `COMPARISON_REPORT.md` and `comparison_summary.json`
-contain aggregate results, no raw transaction or case tables. Commit the generated report only
-after running the full CSV. The roadmap comparison remains pending until that report is reviewed.
+contain aggregate results, no raw transaction or case tables. The reviewed
+[HI-Small comparison](docs/benchmarks/cluster-comparison/RESULTS.md) records the full-data
+result: the current K-Means model remains the operational choice.
 
 The full-training K-Means model is an operational reference. A sampled K-Means model and all
 HDBSCAN settings share a training sample, scaler, and anomaly-only score. An HDBSCAN noise case
@@ -228,7 +229,7 @@ metric calculations.
 - [x] Add a reproducible IBM HI-Small benchmark and report workflow.
 - [x] Run it on `HI-Small_Trans.csv` and commit the generated report.
 - [x] Add graph-motif features for fan-in, fan-out, rapid cycles, and scatter-gather behavior.
-- [ ] Compare K-Means with HDBSCAN on a representative account sample.
+- [x] Compare K-Means with HDBSCAN on a representative account sample.
 - [ ] Add experiment tracking and feature-drift monitoring.
 - [ ] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.
 

@@ -66,3 +66,9 @@ sizes, PR-AUC, capacity metrics, runtime, and process-memory snapshots. Snapshot
 memory measurements. A report generated with `--demo` or `--allow-small-input` is a smoke test,
 not evidence for selecting a clustering method. Only the aggregated full-data output belongs in
 `docs/benchmarks/cluster-comparison/`.
+
+The reviewed full-data outcome and its limitations are recorded in
+[`cluster-comparison/RESULTS.md`](cluster-comparison/RESULTS.md). The original
+run's aggregate `COMPARISON_REPORT.md` and `comparison_summary.json` were
+generated on the machine holding the CSV; the committed summary contains
+the comparison metrics, input hash, sample hash, and split boundary.
