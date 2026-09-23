@@ -21,6 +21,12 @@ while preserving a strict chronological boundary. One Isolation Forest is traine
 large behavioral segment; small segments fall back to a global detector. Later dates are scored
 out of time.
 
+An optional comparison experiment uses a representative sample of early training accounts to
+compare K-Means and HDBSCAN on identical later account-days. The experimental sampled arms use
+the same anomaly-only score, with HDBSCAN noise referred to a global training distribution.
+This experiment does not modify the deployed K-Means scoring pipeline. See
+[`benchmarks/README.md`](benchmarks/README.md) for its design and result limitations.
+
 Fan-in and fan-out count distinct senders and recipients in trailing 60-minute windows and record
 the daily maximum. Rapid-cycle and scatter-gather flags identify ordered three- or four-edge
 cycles (A→B→C→A or A→B→C→D→A) and four-edge diamonds (A→B,C→D) completed within three hours.
