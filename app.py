@@ -221,9 +221,9 @@ benchmark_tab, overview_tab, capacity_tab, queue_tab, network_tab, method_tab = 
 with benchmark_tab:
     st.subheader("Published IBM HI-Small benchmark")
     st.caption(
-        "Historical out-of-time baseline on synthetic IBM AML data, before the 60-minute "
-        "fan-out feature was added. This view reads only committed aggregate artifacts; "
-        "the updated model has not yet been benchmarked on the full dataset."
+        "Historical out-of-time baseline on synthetic IBM AML data, before graph-motif "
+        "features were added. This view reads only committed aggregate artifacts; "
+        "the updated model has not yet been benchmarked in a committed full-data report."
     )
 
     benchmark_metrics = st.columns(5)
@@ -584,7 +584,8 @@ with method_tab:
     st.markdown(
         """
         1. **Account-day aggregation** turns transaction logs into behavioral velocity, value,
-           counterparty, bank-diversity, currency, and reciprocity features.
+           counterparty, bank-diversity, currency, and reciprocity features. Rolling fan-in/out,
+           ordered three-account cycles, and scatter-gather paths add bounded graph context.
         2. **MiniBatch K-Means** discovers and names behavioral segments from complete early
            dates closest to 70% of account-day volume without using laundering outcomes.
         3. **Cluster-relative Isolation Forests** identify unusual behavior inside each segment.

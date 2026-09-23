@@ -31,6 +31,7 @@ scoring to measure performance under a fixed investigation budget.
 
 - A deterministic synthetic demo, so the complete project runs without restricted bank data.
 - IBM AML schema validation and account-day feature engineering.
+- Rolling fan-in and fan-out, ordered three-account cycles, and scatter-gather paths.
 - Temporal training on complete early dates closest to 70% of account-day volume.
 - Behavioral segmentation with MiniBatch K-Means.
 - Cluster-relative anomaly scoring with Isolation Forest.
@@ -105,8 +106,8 @@ writes only the small, commit-ready report tables to `docs/benchmarks/ibm-hi-sma
 
 The committed figures below are a historical baseline from commit
 [`f4ede61`](https://github.com/lidonmiguel/signalgraph-aml/commit/f4ede61f7105eb132a3acb64aa5dae13f77489c5),
-before the 60-minute fan-out feature was added to the model. They are not a measured result for
-the new feature. Rerun the benchmark on the same input CSV to compare the updated model.
+before graph-motif features were added to the model. They are not measured results for the
+updated model. Rerun the benchmark on the same input CSV to compare model versions.
 
 The committed [IBM HI-Small benchmark report](docs/benchmarks/ibm-hi-small/BENCHMARK_REPORT.md)
 uses 5,078,345 transactions and a strict out-of-time evaluation containing 720,800 account-days.
@@ -140,10 +141,13 @@ flowchart TD
     H --> I["Reveal labels for evaluation"]
 ```
 
-Features cover transaction velocity, incoming and outgoing value, counterparties, bank diversity,
-active hours, payment format, cross-currency behavior, flow imbalance, reciprocal relationships,
-and the maximum distinct outgoing recipients in any trailing 60-minute window ending that day.
-That window can include transactions from the preceding day; it never uses future transactions.
+Features cover transaction velocity, value, counterparties, banks, active hours, payment format,
+currencies, flow imbalance, and reciprocal relationships. Graph motifs add the maximum distinct
+outgoing recipients and incoming senders in trailing 60-minute windows; a three- or four-account
+directed cycle (A→B→C→A or A→B→C→D→A); and a scatter-gather diamond (A→B,C→D). Cycle
+edges are strictly ordered; both scatter transfers precede both gather transfers, whose
+timestamps must differ. Motifs complete within three hours. Windows may cross midnight and
+are assigned to the completion day; no feature uses a future transaction.
 Skewed features receive `log1p` transforms and robust scaling.
 
 Risk is a transparent operational score:
@@ -189,7 +193,7 @@ metric calculations.
 
 - [x] Add a reproducible IBM HI-Small benchmark and report workflow.
 - [x] Run it on `HI-Small_Trans.csv` and commit the generated report.
-- [ ] Add graph-motif features for fan-in, fan-out, rapid cycles, and scatter-gather behavior.
+- [x] Add graph-motif features for fan-in, fan-out, rapid cycles, and scatter-gather behavior.
 - [ ] Compare K-Means with HDBSCAN on a representative account sample.
 - [ ] Add experiment tracking and feature-drift monitoring.
 - [ ] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.

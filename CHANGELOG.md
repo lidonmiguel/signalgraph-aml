@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Added 60-minute fan-in alongside fan-out, ordered three- and four-account cycles,
+  and scatter-gather diamonds as account-day model features.
+- Added deterministic scatter-gather demo cases and motif tests covering event order,
+  cross-midnight windows, and expired edges.
+- The committed IBM report remains a historical pre-motif baseline until the full
+  dataset is rerun with this model.
+
 ## v0.1 — 2026-07-17
 
 - Published the reproducible IBM HI-Small benchmark on 5,078,345 transactions.
