@@ -1,6 +1,8 @@
+import numpy as np
 import pandas as pd
 
 from signalgraph_aml.cluster_comparison import (
+    _resolve_percentile_ties,
     compare_account_days,
     representative_account_sample,
 )
@@ -57,6 +59,7 @@ def test_comparison_never_uses_training_labels_to_fit_or_select():
         assert before["evaluation_noise_fraction"] == after["evaluation_noise_fraction"]
         assert before["capacity_results"] == after["capacity_results"]
         assert before["pr_auc"] == after["pr_auc"]
+        assert before["primary_score_ties_at_cutoff"] == after["primary_score_ties_at_cutoff"]
 
 
 def test_hdbscan_without_clusters_scores_every_case_as_noise():
@@ -77,3 +80,13 @@ def test_hdbscan_without_clusters_scores_every_case_as_noise():
     assert result["training_noise_fraction"] == 1.0
     assert result["evaluation_noise_fraction"] == 1.0
     assert 0 <= result["pr_auc"] <= 1
+
+
+def test_global_anomaly_breaks_saturated_ties_without_reordering_percentiles():
+    primary = np.array([1.0, 1.0, 0.999, 0.7])
+    global_anomaly = np.array([0.25, 0.8, 0.9, 0.4])
+    scored = _resolve_percentile_ties(primary, global_anomaly)
+
+    assert scored[1] > scored[0] > scored[2] > scored[3]
+    assert scored.min() >= 0
+    assert scored.max() <= 100

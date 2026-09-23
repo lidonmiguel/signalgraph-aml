@@ -54,6 +54,12 @@ are identical across all arms. HDBSCAN's `-1` noise uses the global detector and
 of all sampled training cases. If it finds zero clusters, its results represent global scoring
 only and should not be interpreted as a successful clustering method.
 
+Small HDBSCAN clusters create coarse empirical anomaly percentiles. Many later cases can
+exceed a cluster's training maximum and receive the same primary percentile. Both sampled
+methods therefore use the *same* global Isolation Forest anomaly score as a tiny secondary
+sort key. It resolves tied primary percentiles without changing the order of unequal ones.
+The report lists saturation and ties at the review cutoffs before the secondary score is applied.
+
 The settings are listed separately; no settings are selected using held-out labels. The run
 records input SHA-256, sample case-ID hash, split dates, environment, noise fractions, cluster
 sizes, PR-AUC, capacity metrics, runtime, and process-memory snapshots. Snapshots are not peak

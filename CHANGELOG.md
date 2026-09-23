@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Resolved saturated percentile ties in the sampled clustering comparison with a shared
+  global-anomaly secondary score and added tie diagnostics to the report.
 - Added an isolated, reproducible account-sample experiment comparing MiniBatch K-Means and
   HDBSCAN on identical out-of-time cases, with explicit noise handling and aggregate reports.
 - Added 60-minute fan-in alongside fan-out, ordered three- and four-account cycles,

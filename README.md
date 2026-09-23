@@ -129,6 +129,9 @@ after running the full CSV. The roadmap comparison remains pending until that re
 The full-training K-Means model is an operational reference. A sampled K-Means model and all
 HDBSCAN settings share a training sample, scaler, and anomaly-only score. An HDBSCAN noise case
 uses a global anomaly reference; later dates are assigned to existing clusters without refitting.
+When many later cases share the same cluster percentile, a tiny common global anomaly score
+breaks ties without changing the order of different percentiles. The report shows how many
+cases reached the primary score maximum and how many tied at the review cutoffs.
 The experiment does not replace the dashboard model. See the
 [benchmark instructions](docs/benchmarks/README.md) for interpretation.
 
