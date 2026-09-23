@@ -2,10 +2,61 @@
 
 from __future__ import annotations
 
+from collections import deque
+
 import numpy as np
 import pandas as pd
 
 from signalgraph_aml.config import FEATURE_COLUMNS
+
+
+def _max_out_recipients_60m(frame: pd.DataFrame) -> pd.DataFrame:
+    """Maximum distinct recipients in a trailing 60-minute window per sender-day.
+
+    Windows may include the preceding day's payments, but each maximum is
+    attributed only to the day of the window's final transaction.
+    """
+
+    payments = frame[["from_account", "to_account", "timestamp", "date"]].sort_values(
+        ["from_account", "timestamp"], kind="mergesort"
+    )
+    window = pd.Timedelta(minutes=60)
+    records: list[tuple[pd.Timestamp, str, int]] = []
+
+    for account, account_payments in payments.groupby("from_account", sort=False, observed=True):
+        recent: deque[tuple[pd.Timestamp, str]] = deque()
+        recipient_counts: dict[str, int] = {}
+        current_day = None
+        maximum = 0
+        for timestamp, recipient, day in account_payments[
+            ["timestamp", "to_account", "date"]
+        ].itertuples(index=False, name=None):
+            if current_day is not None and day != current_day:
+                records.append((current_day, account, maximum))
+                maximum = 0
+            current_day = day
+
+            cutoff = timestamp - window
+            while recent and recent[0][0] < cutoff:
+                _, expired = recent.popleft()
+                count = recipient_counts[expired] - 1
+                if count:
+                    recipient_counts[expired] = count
+                else:
+                    del recipient_counts[expired]
+
+            # A transfer back to the sender is not dispersal to a recipient.
+            if recipient != account:
+                recent.append((timestamp, recipient))
+                recipient_counts[recipient] = recipient_counts.get(recipient, 0) + 1
+            maximum = max(maximum, len(recipient_counts))
+
+        if current_day is not None:
+            records.append((current_day, account, maximum))
+
+    return pd.DataFrame(
+        records, columns=["date", "account_id", "max_out_recipients_60m"]
+    )
 
 
 def build_account_day_features(transactions: pd.DataFrame) -> pd.DataFrame:
@@ -67,6 +118,12 @@ def build_account_day_features(transactions: pd.DataFrame) -> pd.DataFrame:
 
     features = outgoing.merge(incoming, how="outer", on=["date", "account_id"])
     features = features.merge(reciprocal, how="left", on=["date", "account_id"])
+    features = features.merge(
+        _max_out_recipients_60m(frame), how="left", on=["date", "account_id"]
+    )
+    features["max_out_recipients_60m"] = (
+        features["max_out_recipients_60m"].fillna(0).astype("int32")
+    )
     numeric = features.select_dtypes(include="number").columns
     features[numeric] = features[numeric].fillna(0)
 
