@@ -96,6 +96,9 @@ function selectBudget(index) {
   document.getElementById("metric-precision").textContent = `${(100 * precision).toFixed(1)}%`;
   document.getElementById("metric-recall").textContent = `${(100 * recall).toFixed(2)}%`;
   document.getElementById("metric-lift").textContent = `${(precision / prevalence).toFixed(2)}×`;
+  document.getElementById("plain-summary").textContent = `Out of ${formatCount.format(capacity)} cases reviewed, ${hits} were positive; this was tested using simulated data.`;
+  document.getElementById("chart-summary").textContent = `Out of ${formatCount.format(capacity)} cases reviewed, the current model found ${hits} positives; the earlier version found ${published.historical.hits[index]}. Both used the same simulated data.`;
+  document.getElementById("comparison-summary").textContent = `Out of ${formatCount.format(capacity)} cases reviewed by each method, sampled K-Means found ${published.comparison[1].hits[index]} positives and HDBSCAN (size 50) found ${published.comparison[2].hits[index]}. Both were tested on the same simulated cases.`;
   document.getElementById("compare-budget").textContent = `K = ${formatCount.format(capacity)}`;
   budgetRange.value = String(index);
   budgetButtons.forEach((button) => button.setAttribute("aria-pressed", String(Number(button.dataset.capacity) === capacity)));
