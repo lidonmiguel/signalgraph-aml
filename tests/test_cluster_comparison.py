@@ -5,6 +5,7 @@ from signalgraph_aml.cluster_comparison import (
     _resolve_percentile_ties,
     compare_account_days,
     representative_account_sample,
+    run_comparison,
 )
 from signalgraph_aml.data import generate_demo_transactions
 from signalgraph_aml.features import build_account_day_features, temporal_train_mask
@@ -90,3 +91,24 @@ def test_global_anomaly_breaks_saturated_ties_without_reordering_percentiles():
     assert scored[1] > scored[0] > scored[2] > scored[3]
     assert scored.min() >= 0
     assert scored.max() <= 100
+
+
+def test_comparison_records_drift_and_preserves_run_history(tmp_path):
+    options = dict(
+        sample_cases=120,
+        min_cluster_sizes=(15,),
+        min_samples=5,
+        n_clusters=3,
+        capacities=[10],
+        chunk_size=40,
+    )
+    summary = run_comparison(
+        generate_demo_transactions(80, 900, 6),
+        tmp_path / "artifacts",
+        report_dir=tmp_path / "report",
+        **options,
+    )
+    assert (tmp_path / "report" / "feature_drift.csv").is_file()
+    history = tmp_path / "artifacts" / "experiments" / summary["run_id"]
+    assert (history / "comparison_summary.json").is_file()
+    assert (history / "feature_reference.json").is_file()

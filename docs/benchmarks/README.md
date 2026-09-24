@@ -19,6 +19,29 @@ The generated directory contains:
 - `benchmark_summary.json` — dataset hash, environment, runtime, and metrics
 - `capacity_curve.csv` — precision, recall, lift, and hits by alert capacity
 - `cluster_profiles.csv` — behavioral segment names and medians
+- `feature_drift.csv` — aggregate training versus out-of-time PSI and missingness
+
+Every benchmark run also stores `experiment.json`, `feature_reference.json`, and
+`feature_drift.json` locally under its ignored `artifacts/` output directory and saves
+immutable copies in `experiments/<run-id>/`. The JSON reference includes training-only bin
+boundaries and counts. The committed benchmark directory gets the aggregate drift CSV, not
+the per-case tables or reference. The experiment record captures source hash, Git revision if
+available, parameters, split, environment, held-out metrics, and runtime. Each clustering
+comparison saves its summary and the same training-versus-later drift outputs in its own
+`experiments/<run-id>/` history.
+
+To check later account-days again without rerunning the model, use `signalgraph-drift
+--reference artifacts/ibm-hi-small/feature_reference.json --cases
+artifacts/ibm-hi-small/investigation_queue.csv --output-dir artifacts/drift-check`.
+For an independent later batch, pass a CSV with `date` and every model feature; every date
+must be strictly after the training end. The command reads no labels or account IDs.
+
+The reference records each rare or constant feature's observed values plus a separate
+previously unseen bucket. Higher-cardinality features use training decile cutpoints and a
+separate missingness bucket. PSI compares smoothed training and later bucket frequencies;
+the 0.2 alert threshold is a review heuristic. A flag does not prove degradation or imply
+automatic retraining. For temporal monitoring, run the command on separate later batches
+and compare their reports; keep the reference and feature schema fixed.
 
 Raw IBM data remains under `data/raw/` and is excluded from Git.
 
