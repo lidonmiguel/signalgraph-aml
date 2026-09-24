@@ -95,3 +95,15 @@ The reviewed full-data outcome and its limitations are recorded in
 run's aggregate `COMPARISON_REPORT.md` and `comparison_summary.json` were
 generated on the machine holding the CSV; the committed summary contains
 the comparison metrics, input hash, sample hash, and split boundary.
+
+## Hosted dashboard
+
+The [GitHub Pages dashboard](https://lidonmiguel.github.io/signalgraph-aml/) reads the
+small, checked-in [`public-results.json`](../../website/data/public-results.json),
+which combines already published benchmark and comparison aggregates with a
+reviewed, aggregate-only drift diagnostic. See the
+[public evidence record](public-dashboard/EVIDENCE.md) for provenance and limits.
+Pages uploads only the `website/` directory. Both CI and deployment run
+`python scripts/verify_public_dashboard.py`, which rejects unexpected website
+files and verifies published counts against the committed results. Local
+`artifacts/` and `data/raw/` never enter the Pages deployment.
