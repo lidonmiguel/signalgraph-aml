@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "dataset": {
+    "name": "IBM AML HI-Small",
+    "synthetic": true,
+    "input_sha256": "b19d39f515523373f991b689c07e11e7b0b95c17a2c27a87d91584ae16c5b040",
+    "transactions": 5078345,
+    "training_cases": 1759477,
+    "training_end": "2022-09-07",
+    "evaluation_cases": 720800,
+    "evaluation_positives": 3281,
+    "evaluation_start": "2022-09-08"
+  },
+  "capacities": [50, 100, 250, 500, 1000],
+  "current": {
+    "label": "Full-training K-Means",
+    "pr_auc": 0.018872797180843642,
+    "hits": [30, 35, 39, 45, 61],
+    "source": "docs/benchmarks/cluster-comparison/RESULTS.md",
+    "note": "Full-training operational reference in the corrected HI-Small comparison. The independent local benchmark confirmed 35 hits at K=100 and this PR-AUC."
+  },
+  "historical": {
+    "label": "Earlier pre-motif benchmark",
+    "pr_auc": 0.011841437837539888,
+    "hits": [14, 20, 32, 39, 50],
+    "source": "docs/benchmarks/ibm-hi-small/benchmark_summary.json",
+    "note": "Historical run from before graph motifs; the comparison does not isolate the effect of any one feature."
+  },
+  "comparison": [
+    {"label": "Full-training K-Means", "training": "All early cases", "hits": [30, 35, 39, 45, 61], "pr_auc": 0.01887, "seconds": 45.0},
+    {"label": "Sampled K-Means", "training": "Account sample", "hits": [14, 17, 37, 38, 51], "pr_auc": 0.01839, "seconds": 10.5},
+    {"label": "HDBSCAN · size 50", "training": "Account sample", "hits": [21, 21, 21, 21, 25], "pr_auc": 0.01095, "seconds": 120.5},
+    {"label": "HDBSCAN · size 100", "training": "Account sample", "hits": [21, 21, 21, 21, 41], "pr_auc": 0.01006, "seconds": 115.1},
+    {"label": "HDBSCAN · size 200", "training": "Account sample", "hits": [21, 21, 21, 21, 41], "pr_auc": 0.00989, "seconds": 110.2}
+  ],
+  "drift_review": {
+    "feature": "reciprocal_counterparties",
+    "psi": 0.547284,
+    "threshold": 0.2,
+    "training_any": 391630,
+    "later_any": 13754,
+    "training_missing": 0,
+    "later_missing": 0,
+    "first_day_share_pct": 83.62,
+    "interpretation": "The training reference contains an unusual first date. This flag does not establish a sustained shift at the evaluation boundary or a loss of model quality.",
+    "source": "docs/benchmarks/public-dashboard/EVIDENCE.md"
+  },
+  "links": {
+    "repo": "https://github.com/lidonmiguel/signalgraph-aml",
+    "comparison": "https://github.com/lidonmiguel/signalgraph-aml/blob/main/docs/benchmarks/cluster-comparison/RESULTS.md",
+    "historical": "https://github.com/lidonmiguel/signalgraph-aml/blob/main/docs/benchmarks/ibm-hi-small/BENCHMARK_REPORT.md",
+    "evidence": "https://github.com/lidonmiguel/signalgraph-aml/blob/main/docs/benchmarks/public-dashboard/EVIDENCE.md",
+    "model_card": "https://github.com/lidonmiguel/signalgraph-aml/blob/main/docs/MODEL_CARD.md",
+    "data_card": "https://github.com/lidonmiguel/signalgraph-aml/blob/main/docs/DATA_CARD.md"
+  }
+}

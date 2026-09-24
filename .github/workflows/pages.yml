@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     paths:
       - "website/**"
+      - "scripts/verify_public_dashboard.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -28,6 +29,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Python for artifact verification
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify public artifact allowlist and aggregate sources
+        run: python scripts/verify_public_dashboard.py
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

@@ -46,10 +46,20 @@ Demo metrics are **smoke-test results**, not claims about performance on real ba
 The repository includes a separate, auditable IBM benchmark command that records the input hash,
 software environment, runtime, capacity curve, and segment profiles.
 
-## Dashboard
+## Public dashboard
 
-The application includes a read-only benchmark summary built entirely from committed,
-non-sensitive artifacts. The local Streamlit application provides the full interactive workflow.
+**[Open the hosted read-only research dashboard](https://lidonmiguel.github.io/signalgraph-aml/)**
+
+The GitHub Pages site serves only HTML, CSS, JavaScript, an SVG icon, and a small, versioned
+aggregate JSON file. Visitors can change the fixed investigation budget, inspect the corrected
+K-Means/HDBSCAN comparison, review the training-reference drift flag, and follow each result to
+its evidence. It has no server, login, account search, raw transactions, or case-level artifacts.
+The full-training operational result and historical pre-motif benchmark are identified separately.
+The [public evidence record](docs/benchmarks/public-dashboard/EVIDENCE.md) distinguishes figures
+in committed reports from the reviewed local drift diagnostic. CI and the Pages workflow both
+verify an exact website file allowlist and compare reported results against committed sources.
+
+The local Streamlit application provides the full interactive investigation workflow.
 
 The application opens on a published, read-only IBM benchmark and includes six analyst views:
 
@@ -260,7 +270,7 @@ metric calculations.
 - [x] Add graph-motif features for fan-in, fan-out, rapid cycles, and scatter-gather behavior.
 - [x] Compare K-Means with HDBSCAN on a representative account sample.
 - [x] Add experiment tracking and feature-drift monitoring.
-- [ ] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.
+- [x] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.
 
 ## Responsible use
 
