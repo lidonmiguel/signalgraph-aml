@@ -102,10 +102,14 @@ h1 em { color: var(--sea); font-style: normal; }
 .chart-surface svg text { fill: #657c77; font: 12px var(--mono); }
 .context-card { background: #ebf5ed; display: flex; flex-direction: column; }
 .context-label { color: #59776d; }
-.context-card > strong { color: var(--navy); font: 650 41px var(--mono); line-height: 1.1; margin: 10px 0 3px; letter-spacing: -.06em; }
-.context-unit { color: var(--ink-soft); font-size: 12px; }
-.context-rule { border-top: 1px solid #cbded2; margin: 29px 0; }
-.context-card p { color: #4d665e; font-size: 12px; line-height: 1.7; margin: auto 0 17px; padding-top: 28px; }
+.context-card h3 { color: var(--navy); font-size: 24px; letter-spacing: -.04em; margin: 14px 0; }
+.plain-example { font-size: 15px; line-height: 1.55; font-weight: 600; }
+.context-card .plain-example { color: var(--navy); margin: 0 0 20px; }
+.metric-glossary { margin: 0; border-top: 1px solid #cbded2; }
+.metric-glossary > div { border-bottom: 1px solid #cbded2; padding: 10px 0; }
+.metric-glossary dt { color: var(--navy); font-size: 12px; font-weight: 750; }
+.metric-glossary dd { color: #4d665e; font-size: 12px; line-height: 1.5; margin: 3px 0 0; }
+.context-card .context-footnote { color: #4d665e; font-size: 11px; line-height: 1.6; margin: 18px 0 15px; }
 .context-card a, .monitor-aside a, .research-note a { color: #08664d; font-size: 12px; font-weight: 750; }
 .table-scroll { overflow-x: auto; margin-top: 22px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
@@ -134,6 +138,7 @@ tbody tr.selected { background: #dff3e9; }
 .note-index { color: #86c7a9; }
 .research-note h3 { color: #fff; font-size: 26px; letter-spacing: -.045em; margin: 23px 0; }
 .research-note p { color: #b3c8bc; font-size: 13px; line-height: 1.75; }
+.research-note .plain-example { color: #f1fff4; font-size: 15px; line-height: 1.55; }
 .research-note a { color: var(--mint); }
 
 .monitor-grid { display: grid; grid-template-columns: 1.22fr .78fr; gap: clamp(24px, 4vw, 55px); align-items: center; }
@@ -148,6 +153,7 @@ tbody tr.selected { background: #dff3e9; }
 .monitor-aside { border-left: 2px solid #b7d7c0; padding-left: clamp(21px, 2vw, 32px); }
 .monitor-aside .note-index { color: var(--sea); }
 .monitor-aside p { font-size: 13px; line-height: 1.75; margin: 18px 0; color: #48625a; }
+.monitor-aside .plain-example { color: var(--navy); font-size: 15px; line-height: 1.55; }
 
 .evidence-band { background: var(--navy-deep); }
 .evidence-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
