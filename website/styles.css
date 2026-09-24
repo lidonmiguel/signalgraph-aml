@@ -89,6 +89,9 @@ h1 em { color: var(--sea); font-style: normal; }
 .interpretation a { color: var(--mint); }
 
 .capacity-layout, .compare-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(275px, .8fr); gap: 20px; }
+.capacity-layout { align-items: start; }
+.capacity-layout > .context-card { grid-column: 2; grid-row: 1 / span 2; }
+.capacity-layout > .table-scroll { grid-column: 1; grid-row: 2; margin-top: 0; }
 .surface { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: clamp(22px, 2.6vw, 34px); box-shadow: 0 12px 32px #142b1c08; }
 .surface-heading { align-items: start; }
 .surface-heading h3 { font-size: 19px; letter-spacing: -.03em; margin: 0 0 4px; }
@@ -174,7 +177,9 @@ tbody tr.selected { background: #dff3e9; }
 @media (max-width: 1020px) {
   .site-header nav { gap: 16px; }
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
-  .capacity-layout, .compare-layout { grid-template-columns: 1.3fr .9fr; }
+  .compare-layout { grid-template-columns: 1.3fr .9fr; }
+  .capacity-layout { grid-template-columns: 1fr; }
+  .capacity-layout > .context-card, .capacity-layout > .table-scroll { grid-column: auto; grid-row: auto; }
   .method-row { grid-template-columns: minmax(110px, 1.2fr) minmax(60px, 1fr) 40px; gap: 9px; }
   .method-auc { display: none; }
 }
