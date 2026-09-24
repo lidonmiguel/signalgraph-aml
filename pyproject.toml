@@ -32,6 +32,7 @@ dev = [
 signalgraph-aml = "signalgraph_aml.pipeline:main"
 signalgraph-benchmark = "signalgraph_aml.benchmark:main"
 signalgraph-compare-clusters = "signalgraph_aml.cluster_comparison:main"
+signalgraph-drift = "signalgraph_aml.monitoring:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

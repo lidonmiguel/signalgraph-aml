@@ -102,6 +102,33 @@ PowerShell users can place the command on one line or replace each `\` with a ba
 The command keeps large models and scored case files under the ignored `artifacts/` directory and
 writes only the small, commit-ready report tables to `docs/benchmarks/ibm-hi-small/`.
 
+### Track runs and monitor feature drift
+
+Each pipeline or benchmark run writes `experiment.json`, `feature_reference.json`,
+`feature_drift.json`, and `feature_drift.csv` to its ignored output directory. Every run also
+keeps its own copy under `artifacts/.../experiments/<run-id>/`, so rerunning with the same
+output directory does not erase the previous experiment record. The record includes the input
+SHA-256 (for CSV inputs), code revision when Git is available, model settings, feature list,
+split boundaries, software versions, runtime, and held-out metrics. Clustering comparisons
+also retain their existing comparison summary and a drift snapshot for each run.
+
+To check a *newer* account-day batch against an existing training reference without retraining,
+use the later cases from the local investigation queue as a smoke check:
+
+```bash
+signalgraph-drift \
+  --reference artifacts/ibm-hi-small/feature_reference.json \
+  --cases artifacts/ibm-hi-small/investigation_queue.csv \
+  --output-dir artifacts/drift-check
+```
+
+On PowerShell, place the command on one line or use backticks instead of `\`. The command reads
+only the `date` and model feature columns from the case CSV; all rows must be later than the
+reference's training end date. The reference fixes training-only bins; the monitor reports PSI,
+missing rates, and flags PSI at or above 0.2 for review. This threshold is an operational
+heuristic, not evidence that model accuracy changed. Compare dated batches to locate when a
+shift occurred; evaluate outcomes separately. See [monitoring details](docs/benchmarks/README.md).
+
 ### Compare clustering methods
 
 Install the optional comparison dependencies, then run both methods on the same training-account
@@ -206,6 +233,8 @@ signalgraph-aml/
 │   ├── profiling.py               # data-driven segment descriptions
 │   ├── benchmark.py               # IBM benchmark and report generator
 │   ├── cluster_comparison.py      # sampled K-Means and HDBSCAN experiment
+│   ├── experiments.py             # run records and input hashes
+│   ├── monitoring.py              # training baseline and later drift checks
 │   └── pipeline.py                # reproducible CLI
 ├── tests/                         # unit and leakage tests
 ├── docs/                          # data and model cards
@@ -230,7 +259,7 @@ metric calculations.
 - [x] Run it on `HI-Small_Trans.csv` and commit the generated report.
 - [x] Add graph-motif features for fan-in, fan-out, rapid cycles, and scatter-gather behavior.
 - [x] Compare K-Means with HDBSCAN on a representative account sample.
-- [ ] Add experiment tracking and feature-drift monitoring.
+- [x] Add experiment tracking and feature-drift monitoring.
 - [ ] Publish a hosted read-only dashboard with precomputed, non-sensitive artifacts.
 
 ## Responsible use

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import platform
 import sys
@@ -16,6 +15,7 @@ import sklearn
 
 from signalgraph_aml.data import load_transactions
 from signalgraph_aml.evaluation import capacity_curve
+from signalgraph_aml.experiments import sha256_file
 from signalgraph_aml.pipeline import run_pipeline
 from signalgraph_aml.profiling import build_cluster_profiles
 
@@ -40,6 +40,7 @@ def run_benchmark(
     requested_capacities = capacities or DEFAULT_CAPACITIES
 
     started = perf_counter()
+    input_sha256 = sha256_file(source)
     transactions = load_transactions(source)
     if validate_dataset and len(transactions) < 5_000_000:
         raise ValueError(
@@ -53,7 +54,11 @@ def run_benchmark(
         alert_budget=100,
         n_clusters=n_clusters,
         include_explanations=False,
+        input_file=source.name,
+        input_sha256=input_sha256,
     )
+    drift_report = json.loads((output / "feature_drift.json").read_text(encoding="utf-8"))
+    experiment = json.loads((output / "experiment.json").read_text(encoding="utf-8"))
     training_cases = scored_cases.loc[~scored_cases.index.isin(evaluation_cases.index)]
     curve = capacity_curve(evaluation_cases, requested_capacities)
     profiles = build_cluster_profiles(evaluation_cases)
@@ -64,7 +69,7 @@ def run_benchmark(
     summary: dict[str, object] = {
         "benchmark": "IBM AML HI-Small" if validate_dataset else "Development smoke test",
         "input_file": source.name,
-        "input_sha256": _sha256(source),
+        "input_sha256": input_sha256,
         "input_size_bytes": source.stat().st_size,
         "transactions": len(transactions),
         "training_cases": len(training_cases),
@@ -89,6 +94,8 @@ def run_benchmark(
             "scikit_learn": sklearn.__version__,
         },
         "capacity_results": curve.to_dict(orient="records"),
+        "experiment_run_id": experiment["run_id"],
+        "drift_alert_features": drift_report["alert_features"],
     }
     summary_text = json.dumps(summary, indent=2)
     report_text = _render_report(summary, curve, profiles)
@@ -101,15 +108,10 @@ def run_benchmark(
         (publish / "BENCHMARK_REPORT.md").write_text(report_text, encoding="utf-8")
         curve.to_csv(publish / "capacity_curve.csv", index=False)
         profiles.to_csv(publish / "cluster_profiles.csv", index=False)
+        (publish / "feature_drift.csv").write_text(
+            (output / "feature_drift.csv").read_text(encoding="utf-8"), encoding="utf-8"
+        )
     return summary
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _render_report(
@@ -172,6 +174,10 @@ def _render_report(
             *profile_rows,
             "",
             "## Interpretation",
+            "",
+            f"Experiment run: `{summary['experiment_run_id']}`. "
+            f"Feature drift review flags: {len(summary['drift_alert_features'])}. "
+            "See `feature_drift.csv` for per-feature PSI and missingness.",
             "",
             "Capacity changes the number of ranked cases reviewed; it does not refit the model. ",
             "These results are a synthetic benchmark, not evidence of production performance.",

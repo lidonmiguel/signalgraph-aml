@@ -22,12 +22,18 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import RobustScaler
 
-from signalgraph_aml.benchmark import DEFAULT_CAPACITIES, _sha256
+from signalgraph_aml.benchmark import DEFAULT_CAPACITIES
 from signalgraph_aml.config import FEATURE_COLUMNS, RANDOM_STATE
 from signalgraph_aml.data import generate_demo_transactions, load_transactions
 from signalgraph_aml.evaluation import capacity_curve, evaluate_alerts
+from signalgraph_aml.experiments import code_revision, new_experiment_directory, sha256_file
 from signalgraph_aml.features import build_account_day_features, temporal_train_mask
 from signalgraph_aml.modeling import SignalGraphModel, _percentile_rank, prepare_model_features
+from signalgraph_aml.monitoring import (
+    compare_feature_drift,
+    fit_feature_reference,
+    write_drift_report,
+)
 
 
 def representative_account_sample(
@@ -488,6 +494,9 @@ def _report(summary: dict[str, object]) -> str:
             "the entire held-out queue, not a daily investigation capacity. A zero-cluster",
             "HDBSCAN run scores everything with the global detector and is inconclusive",
             "as a clustering comparison. Demo and partial-data results are smoke tests.",
+            f"Experiment run: `{summary.get('run_id', 'untracked')}`. "
+            f"Feature drift review flags: {len(summary.get('drift_alert_features', []))}. "
+            "See `feature_drift.csv` for training versus later feature distributions.",
             "Elapsed time is per method, excluding shared feature engineering and sample setup;",
             "observed RSS is only",
             "a process-memory snapshot at method completion (see the JSON report).",
@@ -511,6 +520,11 @@ def run_comparison(
     features = build_account_day_features(transactions)
     feature_seconds = perf_counter() - started
     summary = compare_account_days(features, **settings)
+    training_mask = temporal_train_mask(features)
+    training, later = features.loc[training_mask], features.loc[~training_mask]
+    reference = fit_feature_reference(training, summary["training_date_max"])
+    drift = compare_feature_drift(reference, later)
+    history = new_experiment_directory(output_dir)
     summary.update(
         {
             "input_file": input_file,
@@ -518,8 +532,16 @@ def run_comparison(
             "transactions": len(transactions),
             "feature_seconds": round(feature_seconds, 2),
             "total_seconds": round(perf_counter() - started, 2),
+            "run_id": history.name,
+            "code_revision": code_revision(),
+            "drift_alert_features": drift["alert_features"],
         }
     )
+    reference_text = json.dumps(reference, indent=2)
+    for path in (output_dir, history):
+        directory = Path(path)
+        (directory / "feature_reference.json").write_text(reference_text, encoding="utf-8")
+        write_drift_report(drift, directory)
     for path in (output_dir, report_dir):
         if path is None:
             continue
@@ -529,6 +551,14 @@ def run_comparison(
             json.dumps(summary, indent=2), encoding="utf-8"
         )
         (directory / "COMPARISON_REPORT.md").write_text(_report(summary), encoding="utf-8")
+        if report_dir is not None and directory == Path(report_dir):
+            (directory / "feature_drift.csv").write_text(
+                (history / "feature_drift.csv").read_text(encoding="utf-8"), encoding="utf-8"
+            )
+    (history / "comparison_summary.json").write_text(
+        json.dumps(summary, indent=2), encoding="utf-8"
+    )
+    (history / "COMPARISON_REPORT.md").write_text(_report(summary), encoding="utf-8")
     return summary
 
 
@@ -558,7 +588,7 @@ def main() -> None:
         transactions,
         args.output_dir,
         input_file="deterministic demo" if args.demo else args.input.name,
-        input_sha256=None if args.demo else _sha256(args.input),
+        input_sha256=None if args.demo else sha256_file(args.input),
         report_dir=args.report_dir,
         sample_cases=args.sample_cases,
         min_cluster_sizes=tuple(args.min_cluster_sizes),
